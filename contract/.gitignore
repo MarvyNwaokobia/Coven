@@ -1,0 +1,17 @@
+# Compiler files
+cache/
+out/
+
+# Vendored deps — restore with `forge install` (versions pinned in foundry.lock)
+lib/
+
+# Ignores development broadcast logs
+!/broadcast
+/broadcast/*/31337/
+/broadcast/**/dry-run/
+
+# Docs
+docs/
+
+# Dotenv file
+.env

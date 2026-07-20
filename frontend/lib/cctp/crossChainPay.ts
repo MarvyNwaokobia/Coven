@@ -15,8 +15,8 @@ const CCTP_MESSAGE_TRANSMITTER_ABI = [
   "function receiveMessage(bytes message, bytes attestation) returns (bool)",
 ];
 
-/** Arc CCTP domain — confirm against Circle docs before mainnet. */
-export const ARC_DOMAIN = Number(process.env.NEXT_PUBLIC_ARC_CCTP_DOMAIN ?? 7);
+/** Arc CCTP domain — 26 on testnet (see ARC_TESTNET.md §3). Confirm again before mainnet. */
+export const ARC_DOMAIN = Number(process.env.NEXT_PUBLIC_ARC_CCTP_DOMAIN ?? 26);
 
 export type SourceChain = "ethereum" | "base" | "polygon" | "arbitrum";
 

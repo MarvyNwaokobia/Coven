@@ -13,4 +13,9 @@ remappings = [
 [rpc_endpoints]
 arc_testnet = "${ARC_RPC_URL}"
 
+# NOTE: no [etherscan] block here — forge script fails with "Chain 5042002
+# not supported" if one is present (Arc isn't in Foundry's built-in chain
+# list yet). Pass verifier args directly to `forge verify-contract` instead;
+# see ARC_TESTNET.md §6.
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

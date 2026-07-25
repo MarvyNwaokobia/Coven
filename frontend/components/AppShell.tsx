@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
+import NotificationBell from "./NotificationBell";
 
 const TABS = [
   { href: "/home", label: "Home", icon: "🏠" },
@@ -41,6 +42,9 @@ export default function AppShell({
           </Link>
         )}
         {title && <h1 className="font-semibold">{title}</h1>}
+        <div className="ml-auto">
+          <NotificationBell />
+        </div>
       </header>
 
       <main className="flex-1 px-4 py-4">{children}</main>

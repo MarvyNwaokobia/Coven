@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
-import { transferUSDC } from "@/lib/circle/wallets";
+import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { recordActivity } from "@/lib/server/activity";
 
 /**
  * POST /api/payments/send
  * body: { toUsername, amountUsdc, note?, sourceChain? }
  *
- * On Arc: direct Circle wallet-to-wallet transfer (free).
+ * On Arc: the client must have already run a PIN challenge via
+ * /api/circle/transfer-challenge ({ kind: "send" }) before calling this —
+ * we verify the resulting Circle transaction actually settled before
+ * recording anything.
  * Cross-chain: the client burns via CCTP first, then calls /api/cctp/relay;
  * this route records the pending payment row for it.
  */
@@ -48,16 +51,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Your wallet is not provisioned yet" }, { status: 400 });
     }
     try {
-      const { transactionId } = await transferUSDC({
-        fromWalletId: sender.circle_wallet_id,
-        toAddress: recipient.wallet_address,
-        amountUsdc: String(amount),
+      const { txHash: verifiedHash } = await resolveAndVerifyRecentTransfer({
         userId: sender.id,
+        walletId: sender.circle_wallet_id,
+        destinationAddress: recipient.wallet_address,
+        amountUsdc: amount,
       });
-      recordedTxHash = transactionId;
+      recordedTxHash = verifiedHash;
     } catch (e) {
-      console.error("Circle transfer failed:", e);
-      return NextResponse.json({ error: "Transfer failed — check your balance" }, { status: 502 });
+      console.error("Transfer verification failed:", e);
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Transfer could not be verified" },
+        { status: 502 }
+      );
     }
   } else {
     status = "pending"; // completed by /api/cctp/relay

@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
-import { transferUSDC } from "@/lib/circle/wallets";
+import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { recordActivity } from "@/lib/server/activity";
 
-/** POST /api/splits/[splitId]/pay — member pays their share to the creator. */
+/**
+ * POST /api/splits/[splitId]/pay — member pays their share to the creator.
+ * The client must have already run a PIN challenge via
+ * /api/circle/transfer-challenge ({ kind: "split", splitId }) before
+ * calling this — we verify the resulting transaction settled first.
+ */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ splitId: string }> }
@@ -39,18 +44,21 @@ export async function POST(
     return NextResponse.json({ error: "Wallet not provisioned" }, { status: 400 });
   }
 
-  let txRef: string;
+  let txHash: string | null;
   try {
-    const { transactionId } = await transferUSDC({
-      fromWalletId: member.circle_wallet_id,
-      toAddress: split.creator.wallet_address,
-      amountUsdc: String(share.amount_owed_usdc),
+    const result = await resolveAndVerifyRecentTransfer({
       userId: member.id,
+      walletId: member.circle_wallet_id,
+      destinationAddress: split.creator.wallet_address,
+      amountUsdc: Number(share.amount_owed_usdc),
     });
-    txRef = transactionId;
+    txHash = result.txHash;
   } catch (e) {
-    console.error("Split payment failed:", e);
-    return NextResponse.json({ error: "Transfer failed — check your balance" }, { status: 502 });
+    console.error("Split payment verification failed:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Transfer could not be verified" },
+      { status: 502 }
+    );
   }
 
   const { data: payment } = await admin
@@ -61,7 +69,7 @@ export async function POST(
       amount_usdc: share.amount_owed_usdc,
       note: split.description,
       source_chain: "ARC",
-      tx_hash: txRef,
+      tx_hash: txHash,
       status: "completed",
       circle_id: split.circle_id,
     })

@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
-import { transferUSDC } from "@/lib/circle/wallets";
+import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { recordActivity } from "@/lib/server/activity";
 
-/** POST /api/payments/[requestId]/pay — one-tap pay on a pending request. */
+/**
+ * POST /api/payments/[requestId]/pay — one-tap pay on a pending request.
+ * The client must have already run a PIN challenge via
+ * /api/circle/transfer-challenge ({ kind: "request", requestId }) before
+ * calling this — we verify the resulting transaction settled first.
+ */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ requestId: string }> }
@@ -38,18 +43,21 @@ export async function POST(
     return NextResponse.json({ error: "Wallet not provisioned" }, { status: 400 });
   }
 
-  let txRef: string;
+  let txHash: string | null;
   try {
-    const { transactionId } = await transferUSDC({
-      fromWalletId: payer.circle_wallet_id,
-      toAddress: requester.wallet_address,
-      amountUsdc: String(request.amount_usdc),
+    const result = await resolveAndVerifyRecentTransfer({
       userId: payer.id,
+      walletId: payer.circle_wallet_id,
+      destinationAddress: requester.wallet_address,
+      amountUsdc: Number(request.amount_usdc),
     });
-    txRef = transactionId;
+    txHash = result.txHash;
   } catch (e) {
-    console.error("Request payment transfer failed:", e);
-    return NextResponse.json({ error: "Transfer failed — check your balance" }, { status: 502 });
+    console.error("Request payment verification failed:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Transfer could not be verified" },
+      { status: 502 }
+    );
   }
 
   const { data: payment } = await admin
@@ -60,7 +68,7 @@ export async function POST(
       amount_usdc: request.amount_usdc,
       note: request.note,
       source_chain: "ARC",
-      tx_hash: txRef,
+      tx_hash: txHash,
       status: "completed",
     })
     .select()

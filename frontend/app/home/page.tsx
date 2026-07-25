@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import ActivityFeed from "@/components/ActivityFeed";
 import { Card, Spinner, Avatar, Button } from "@/components/ui";
 import { api } from "@/lib/api-client";
+import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC, formatLocal } from "@/lib/format";
 import type { ActivityItem, PaymentRequest } from "@/lib/types";
@@ -33,10 +34,20 @@ export default function HomePage() {
 
   async function payRequest(id: string) {
     try {
+      await approveTransfer({ kind: "request", requestId: id });
       await api(`/api/payments/${id}/pay`, { json: {} });
       setRequests((rs) => rs.filter((r) => r.id !== id));
     } catch (e) {
       alert(e instanceof Error ? e.message : "Payment failed");
+    }
+  }
+
+  async function rejectRequest(id: string) {
+    try {
+      await api(`/api/payments/${id}/reject`, { json: {} });
+      setRequests((rs) => rs.filter((r) => r.id !== id));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not decline request");
     }
   }
 
@@ -79,21 +90,32 @@ export default function HomePage() {
           <ul className="space-y-2">
             {requests.map((r) => (
               <li key={r.id}>
-                <Card className="flex items-center gap-3 py-3">
-                  <Avatar
-                    username={r.from_user?.username ?? "?"}
-                    avatarUrl={r.from_user?.avatar_url}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
-                      @{r.from_user?.username} requests{" "}
-                      <span className="amount">{formatUSDC(r.amount_usdc)}</span>
-                    </p>
-                    {r.note && <p className="text-xs text-text-2 truncate">“{r.note}”</p>}
+                <Card className="space-y-3 py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      username={r.from_user?.username ?? "?"}
+                      avatarUrl={r.from_user?.avatar_url}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">
+                        @{r.from_user?.username} requests{" "}
+                        <span className="amount">{formatUSDC(r.amount_usdc)}</span>
+                      </p>
+                      {r.note && <p className="text-xs text-text-2 truncate">“{r.note}”</p>}
+                    </div>
                   </div>
-                  <Button className="px-4 py-2 text-xs" onClick={() => payRequest(r.id)}>
-                    Pay
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      className="flex-1 px-4 py-2 text-xs"
+                      onClick={() => rejectRequest(r.id)}
+                    >
+                      Decline
+                    </Button>
+                    <Button className="flex-1 px-4 py-2 text-xs" onClick={() => payRequest(r.id)}>
+                      Pay
+                    </Button>
+                  </div>
                 </Card>
               </li>
             ))}

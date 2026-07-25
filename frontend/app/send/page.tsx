@@ -7,6 +7,7 @@ import UserSearch from "@/components/UserSearch";
 import PaymentSuccess from "@/components/PaymentSuccess";
 import { Button, Input, Card, Avatar } from "@/components/ui";
 import { api } from "@/lib/api-client";
+import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC } from "@/lib/format";
 
@@ -32,6 +33,7 @@ function SendFlow() {
     setBusy(true);
     setError("");
     try {
+      await approveTransfer({ kind: "send", toUsername: recipient!, amountUsdc: amt });
       await api("/api/payments/send", {
         json: { toUsername: recipient, amountUsdc: amt, note },
       });
@@ -134,7 +136,7 @@ function SendFlow() {
           <p className="text-center text-xs text-text-2">Settles on Arc in &lt;500ms ⚡</p>
 
           <Button className="w-full" onClick={confirm} disabled={busy}>
-            {busy ? "Sending…" : `Confirm & Send ${formatUSDC(amt)}`}
+            {busy ? "Waiting for PIN approval…" : `Confirm & Send ${formatUSDC(amt)}`}
           </Button>
           {error && <p className="text-danger text-sm text-center">{error}</p>}
         </div>

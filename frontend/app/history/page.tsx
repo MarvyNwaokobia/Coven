@@ -41,12 +41,12 @@ export default function HistoryPage() {
               <li key={p.id}>
                 <Card className="flex items-center gap-3 py-3">
                   <Avatar
-                    username={other?.username ?? "?"}
+                    username={other?.username ?? "external"}
                     avatarUrl={other?.avatar_url}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {sent ? "To" : "From"} @{other?.username}
+                      {other ? `${sent ? "To" : "From"} @${other.username}` : "External deposit"}
                       {p.source_chain !== "ARC" && (
                         <span className="ml-1.5 text-xs text-accent">
                           via {p.source_chain.toLowerCase()}

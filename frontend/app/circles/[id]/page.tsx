@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { Button, Card, Avatar, Spinner, StatusChip, Input, EmptyState } from "@/components/ui";
 import { api } from "@/lib/api-client";
+import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC, relativeTime } from "@/lib/format";
 import type { Circle, Split, Payment, User } from "@/lib/types";
@@ -67,6 +68,7 @@ export default function CircleDetailPage() {
 
   async function paySplit(splitId: string) {
     try {
+      await approveTransfer({ kind: "split", splitId });
       await api(`/api/splits/${splitId}/pay`, { json: {} });
       load();
     } catch (e) {

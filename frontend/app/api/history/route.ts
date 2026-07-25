@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
+import { syncInboundTransfers } from "@/lib/server/inbound-sync";
 
 /** GET /api/history?page=1 — full payment history (sent + received). */
 export async function GET(req: Request) {
@@ -8,6 +9,12 @@ export async function GET(req: Request) {
 
   const page = Math.max(1, Number(new URL(req.url).searchParams.get("page") ?? 1));
   const pageSize = 25;
+
+  if (user.circle_wallet_id) {
+    await syncInboundTransfers(user.id, user.circle_wallet_id).catch((e) =>
+      console.error("Inbound transfer sync failed:", e)
+    );
+  }
 
   const admin = getSupabaseAdmin();
   const { data, error } = await admin

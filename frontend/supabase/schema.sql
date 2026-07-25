@@ -46,7 +46,7 @@ create table if not exists circle_members (
 -- Payments (all P2P transfers)
 create table if not exists payments (
   id uuid primary key default gen_random_uuid(),
-  from_user_id uuid references users(id) not null,
+  from_user_id uuid references users(id), -- null = external deposit (not sent via PayCircle)
   to_user_id uuid references users(id) not null,
   amount_usdc numeric(20,6) not null,
   fee_usdc numeric(20,6) default 0,
@@ -68,7 +68,7 @@ create table if not exists payment_requests (
   amount_usdc numeric(20,6) not null,
   note text,
   status text default 'pending'
-    check (status in ('pending','paid','cancelled','expired')),
+    check (status in ('pending','paid','cancelled','rejected','expired')),
   payment_id uuid references payments(id),
   expires_at timestamptz default (now() + interval '7 days'),
   created_at timestamptz default now()
@@ -139,8 +139,9 @@ create table if not exists activity (
   user_id uuid references users(id) not null,
   type text not null
     check (type in ('payment_sent','payment_received','request_received',
-                    'request_paid','split_created','split_paid','split_complete',
-                    'offramp_completed','offramp_failed','circle_joined')),
+                    'request_paid','request_rejected','request_declined','split_created',
+                    'split_paid','split_complete','offramp_completed','offramp_failed',
+                    'circle_joined')),
   reference_id uuid,
   actor_id uuid references users(id),
   amount_usdc numeric(20,6),

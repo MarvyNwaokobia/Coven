@@ -1,23 +1,29 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
-import { relayToArc } from "@/lib/cctp/crossChainPay";
+import { relayToArc, type SourceChain } from "@/lib/cctp/crossChainPay";
+
+const SOURCE_CHAINS: SourceChain[] = ["ethereum", "base", "polygon", "arbitrum"];
 
 /**
- * POST /api/cctp/relay — body: { messageHash, paymentId }
- * Internal: after a client-side CCTP burn, relays the attested message to
- * Arc and marks the pending payment completed.
+ * POST /api/cctp/relay — body: { sourceTxHash, sourceChain, paymentId }
+ * Internal: after a client-side CCTP burn, polls Circle's attestation
+ * service and relays the signed message to Arc, then marks the pending
+ * payment completed.
  */
 export async function POST(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { messageHash, paymentId } = await req.json();
-  if (!messageHash) {
-    return NextResponse.json({ error: "messageHash required" }, { status: 400 });
+  const { sourceTxHash, sourceChain, paymentId } = await req.json();
+  if (!sourceTxHash || !SOURCE_CHAINS.includes(sourceChain)) {
+    return NextResponse.json(
+      { error: `sourceTxHash and sourceChain (one of ${SOURCE_CHAINS.join(", ")}) required` },
+      { status: 400 }
+    );
   }
 
   try {
-    const txHash = await relayToArc(messageHash);
+    const txHash = await relayToArc({ sourceTxHash, sourceChain });
 
     if (paymentId) {
       const admin = getSupabaseAdmin();

@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Card } from "@/components/ui";
+import WalletSetup from "@/components/WalletSetup";
 import { api } from "@/lib/api-client";
 import { validateUsername } from "@/lib/format";
 import { useAuth } from "@/lib/useAuth";
 
-/** Username selection + profile setup after first login. */
+/** Username selection, then wallet PIN setup, after first login. */
 export default function OnboardPage() {
   const router = useRouter();
   useAuth(); // redirects to /signup if unauthenticated
+  const [step, setStep] = useState<"username" | "wallet">("username");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
@@ -23,12 +25,24 @@ export default function OnboardPage() {
     setError("");
     try {
       await api("/api/users/create", { json: { username, displayName } });
-      router.replace("/home");
+      setStep("wallet");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not claim username");
     } finally {
       setBusy(false);
     }
+  }
+
+  if (step === "wallet") {
+    return (
+      <div className="mx-auto w-full max-w-md flex-1 flex flex-col justify-center px-6 py-10">
+        <h1 className="text-2xl font-extrabold mb-1">One more step</h1>
+        <p className="text-text-2 text-sm mb-8">
+          Your @{username} is set — now secure your wallet.
+        </p>
+        <WalletSetup onComplete={() => router.replace("/home")} />
+      </div>
+    );
   }
 
   return (
@@ -67,10 +81,6 @@ export default function OnboardPage() {
         </Button>
         {error && <p className="text-danger text-sm">{error}</p>}
       </Card>
-
-      <p className="text-xs text-text-2/70 mt-6 text-center">
-        Your Circle wallet on Arc is created automatically — no seed phrase needed.
-      </p>
     </div>
   );
 }

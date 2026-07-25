@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
-import { createUserWallet } from "@/lib/circle/wallets";
 import { validateUsername } from "@/lib/format";
 
 /**
@@ -27,27 +26,23 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (taken) return NextResponse.json({ error: "Username is taken" }, { status: 409 });
 
-  // Retry wallet provisioning if signup-time creation failed
-  let walletPatch = {};
-  if (!user.circle_wallet_id) {
-    try {
-      const wallet = await createUserWallet(user.id);
-      walletPatch = {
-        circle_wallet_id: wallet.walletId,
-        wallet_address: wallet.walletAddress,
-      };
-    } catch (e) {
-      console.error("Wallet retry failed:", e);
-    }
-  }
-
+  // Wallet setup is a separate PIN-challenge step (see /api/circle/init) —
+  // not something we can provision inline here.
   const { data: updated, error } = await admin
     .from("users")
-    .update({ username: clean, display_name: displayName ?? null, ...walletPatch })
+    .update({ username: clean, display_name: displayName ?? null })
     .eq("id", user.id)
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    // 23505 = unique_violation — the pre-check above missed a same-instant
+    // race between two people claiming the same username; the DB constraint
+    // is the real guarantee, this just keeps the error message clean.
+    if (error.code === "23505") {
+      return NextResponse.json({ error: "Username is taken" }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
   return NextResponse.json({ user: updated });
 }

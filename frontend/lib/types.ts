@@ -17,7 +17,7 @@ export interface User {
 
 export interface Payment {
   id: string;
-  from_user_id: string;
+  from_user_id: string | null; // null = external deposit, not sent via PayCircle
   to_user_id: string;
   amount_usdc: number;
   fee_usdc: number;
@@ -36,7 +36,7 @@ export interface PaymentRequest {
   to_user_id: string;
   amount_usdc: number;
   note: string | null;
-  status: "pending" | "paid" | "cancelled" | "expired";
+  status: "pending" | "paid" | "cancelled" | "rejected" | "expired";
   payment_id: string | null;
   expires_at: string;
   created_at: string;
@@ -113,6 +113,8 @@ export type ActivityType =
   | "payment_received"
   | "request_received"
   | "request_paid"
+  | "request_rejected"
+  | "request_declined"
   | "split_created"
   | "split_paid"
   | "split_complete"

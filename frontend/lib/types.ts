@@ -78,6 +78,45 @@ export interface SplitMember {
   user?: User;
 }
 
+export interface Goal {
+  id: string;
+  circle_id: string;
+  contract_goal_id: string | null;
+  creator_id: string;
+  target_amount_usdc: number;
+  collected_usdc: number;
+  description: string;
+  status: "open" | "withdrawn" | "cancelled";
+  created_at: string;
+  members?: User[];
+  withdrawal?: GoalWithdrawal[];
+}
+
+export interface GoalWithdrawal {
+  id: string;
+  goal_id: string;
+  contract_withdrawal_id: string | null;
+  requested_by: string;
+  recipient_user_id: string;
+  amount_usdc: number;
+  status: "pending" | "executed" | "cancelled";
+  tx_hash: string | null;
+  created_at: string;
+  requester?: { id: string; username: string };
+  recipient?: { id: string; username: string };
+  approvals?: { user_id: string }[];
+}
+
+export interface GoalContribution {
+  id: string;
+  goal_id: string;
+  user_id: string;
+  amount_usdc: number;
+  tx_hash: string | null;
+  created_at: string;
+  user?: { id: string; username: string; avatar_url: string | null };
+}
+
 export interface BankAccount {
   id: string;
   user_id: string;
@@ -90,6 +129,14 @@ export interface BankAccount {
   created_at: string;
   /** Last 4 digits only — full number never leaves the server */
   account_last4?: string;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  read: boolean;
+  created_at: string;
 }
 
 export interface OfframpPayout {
@@ -120,7 +167,11 @@ export type ActivityType =
   | "split_complete"
   | "offramp_completed"
   | "offramp_failed"
-  | "circle_joined";
+  | "circle_joined"
+  | "goal_created"
+  | "goal_target_reached"
+  | "goal_withdrawal_requested"
+  | "goal_withdrawn";
 
 export interface ActivityItem {
   id: string;

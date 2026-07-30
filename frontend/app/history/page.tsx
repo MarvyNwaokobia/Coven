@@ -2,79 +2,71 @@
 
 import { useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
-import { Card, Avatar, Spinner, StatusChip, EmptyState } from "@/components/ui";
+import ActivityFeed from "@/components/ActivityFeed";
+import { Spinner } from "@/components/ui";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/useAuth";
-import { formatUSDC, relativeTime } from "@/lib/format";
-import type { Payment } from "@/lib/types";
+import type { ActivityItem } from "@/lib/types";
 
-type HistoryPayment = Payment & {
-  from_user?: { id: string; username: string; avatar_url: string | null };
-  to_user?: { id: string; username: string; avatar_url: string | null };
-};
+const FILTERS: { id: ActivityItem["type"] | "all"; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "payment_sent", label: "Sent" },
+  { id: "payment_received", label: "Received" },
+  { id: "request_received", label: "Requests" },
+  { id: "split_created", label: "Splits" },
+  { id: "offramp_completed", label: "Cash outs" },
+];
 
 export default function HistoryPage() {
   const { user } = useAuth();
-  const [payments, setPayments] = useState<HistoryPayment[] | null>(null);
+  const [items, setItems] = useState<ActivityItem[] | null>(null);
+  const [filter, setFilter] = useState<ActivityItem["type"] | "all">("all");
 
   useEffect(() => {
     if (!user) return;
-    api<{ payments: HistoryPayment[] }>("/api/history")
-      .then(({ payments }) => setPayments(payments))
-      .catch(() => setPayments([]));
+    api<{ activity: ActivityItem[] }>("/api/activity")
+      .then(({ activity }) => setItems(activity))
+      .catch(() => setItems([]));
   }, [user]);
 
+  const filtered =
+    items?.filter((i) => {
+      if (filter === "all") return true;
+      if (filter === "payment_sent") return i.type === "payment_sent";
+      if (filter === "payment_received") return i.type === "payment_received";
+      if (filter === "request_received") return i.type.startsWith("request_");
+      if (filter === "split_created") return i.type.startsWith("split_");
+      if (filter === "offramp_completed") return i.type.startsWith("offramp_");
+      return true;
+    }) ?? [];
+
   return (
-    <AppShell title="History">
-      {payments === null ? (
-        <div className="flex justify-center py-10">
-          <Spinner />
+    <AppShell title="Transaction History">
+      <div className="space-y-4">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
+                filter === f.id
+                  ? "bg-[#0a192f] text-white shadow-2xs"
+                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
-      ) : payments.length === 0 ? (
-        <EmptyState emoji="🗂️" title="No transactions yet" />
-      ) : (
-        <ul className="space-y-2">
-          {payments.map((p) => {
-            const sent = p.from_user_id === user?.id;
-            const other = sent ? p.to_user : p.from_user;
-            return (
-              <li key={p.id}>
-                <Card className="flex items-center gap-3 py-3">
-                  <Avatar
-                    username={other?.username ?? "external"}
-                    avatarUrl={other?.avatar_url}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {other ? `${sent ? "To" : "From"} @${other.username}` : "External deposit"}
-                      {p.source_chain !== "ARC" && (
-                        <span className="ml-1.5 text-xs text-accent">
-                          via {p.source_chain.toLowerCase()}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-text-2 truncate">
-                      {p.note ? `“${p.note}” · ` : ""}
-                      {relativeTime(p.created_at)}
-                    </p>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <p
-                      className={`amount text-sm font-semibold ${
-                        sent ? "" : "text-success"
-                      }`}
-                    >
-                      {sent ? "−" : "+"}
-                      {formatUSDC(p.amount_usdc)}
-                    </p>
-                    <StatusChip status={p.status} />
-                  </div>
-                </Card>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+
+        {items === null ? (
+          <div className="flex justify-center py-10">
+            <Spinner />
+          </div>
+        ) : (
+          <ActivityFeed items={filtered} />
+        )}
+      </div>
     </AppShell>
   );
 }

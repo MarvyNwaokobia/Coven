@@ -5,6 +5,7 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import ActivityFeed from "@/components/ActivityFeed";
 import { Card, Spinner, Avatar, Button } from "@/components/ui";
+import { SendIcon, RequestIcon, ReceiveIcon, CashoutIcon } from "@/components/Icons";
 import { api } from "@/lib/api-client";
 import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
@@ -53,55 +54,64 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <Card className="text-center py-8 bg-gradient-to-b from-surface to-surface-2">
-        <p className="text-text-2 text-sm">Your Balance</p>
-        <p className="amount text-4xl font-bold mt-2">
+      {/* Hero Balance Card — Solid Deep Royal Navy, No Gradients */}
+      <div className="rounded-2xl bg-[#0a192f] text-white p-6 shadow-md border border-slate-800 text-center relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Available Balance</p>
+        <p className="amount text-4xl font-extrabold mt-2 tracking-tight">
           {balance ? formatUSDC(balance.usdc) : "—"}
-          <span className="text-base font-medium text-text-2 ml-1">USDC</span>
+          <span className="text-sm font-medium text-slate-400 ml-1.5">USDC</span>
         </p>
         {balance && (
-          <p className="text-text-2 text-sm mt-1">
-            ≈ {formatLocal(balance.localEstimate)} NGN
-          </p>
+          <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-medium text-slate-300">
+            <span>≈ {formatLocal(balance.localEstimate)} NGN</span>
+          </div>
         )}
-      </Card>
-
-      <div className="grid grid-cols-4 gap-2 mt-4">
-        {[
-          { href: "/send", label: "Send", icon: "↗️" },
-          { href: "/request", label: "Request", icon: "↙️" },
-          { href: "/receive", label: "Receive", icon: "🔳" },
-          { href: "/cashout", label: "Cash Out", icon: "🏦" },
-        ].map((a) => (
-          <Link
-            key={a.href}
-            href={a.href}
-            className="flex flex-col items-center gap-1.5 rounded-card bg-surface border border-border py-3.5 hover:bg-surface-2 transition-colors"
-          >
-            <span className="text-xl">{a.icon}</span>
-            <span className="text-xs font-medium">{a.label}</span>
-          </Link>
-        ))}
       </div>
 
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-4 gap-2.5 mt-4">
+        {[
+          { href: "/send", label: "Send", icon: SendIcon },
+          { href: "/request", label: "Request", icon: RequestIcon },
+          { href: "/receive", label: "Receive", icon: ReceiveIcon },
+          { href: "/cashout", label: "Cash Out", icon: CashoutIcon },
+        ].map((a) => {
+          const Icon = a.icon;
+          return (
+            <Link
+              key={a.href}
+              href={a.href}
+              className="flex flex-col items-center gap-2 rounded-2xl bg-white border border-slate-200/90 py-3.5 px-2 hover:border-blue-600 hover:shadow-xs transition-all text-center group"
+            >
+              <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-blue-50 text-[#0a192f] group-hover:text-blue-600 flex items-center justify-center transition-colors border border-slate-200/60">
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">{a.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Payment Requests Section */}
       {requests.length > 0 && (
         <section className="mt-6">
-          <h2 className="font-semibold mb-2">Requests for you</h2>
-          <ul className="space-y-2">
+          <h2 className="font-bold text-slate-900 text-sm tracking-wide mb-2.5">Requests for you</h2>
+          <ul className="space-y-2.5">
             {requests.map((r) => (
               <li key={r.id}>
-                <Card className="space-y-3 py-3">
+                <Card className="space-y-3 py-3.5">
                   <div className="flex items-center gap-3">
                     <Avatar
                       username={r.from_user?.username ?? "?"}
                       avatarUrl={r.from_user?.avatar_url}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-semibold text-slate-900">
                         @{r.from_user?.username} requests{" "}
-                        <span className="amount">{formatUSDC(r.amount_usdc)}</span>
+                        <span className="amount font-bold text-slate-900">{formatUSDC(r.amount_usdc)}</span>
                       </p>
-                      {r.note && <p className="text-xs text-text-2 truncate">“{r.note}”</p>}
+                      {r.note && <p className="text-xs text-slate-500 truncate">“{r.note}”</p>}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -123,8 +133,9 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* Activity Feed Section */}
       <section className="mt-6">
-        <h2 className="font-semibold mb-2">Activity</h2>
+        <h2 className="font-bold text-slate-900 text-sm tracking-wide mb-2.5">Recent Activity</h2>
         {loading ? (
           <div className="flex justify-center py-10">
             <Spinner />

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import UserSearch from "@/components/UserSearch";
 import { Button, Input, Card, Avatar } from "@/components/ui";
+import { MailIcon } from "@/components/Icons";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC } from "@/lib/format";
@@ -40,10 +41,12 @@ export default function RequestPage() {
   if (sent) {
     return (
       <AppShell title="Request" back>
-        <Card className="text-center py-10">
-          <p className="text-3xl mb-3">📨</p>
-          <p className="font-semibold">Request sent to @{payer}</p>
-          <p className="text-text-2 text-sm mt-1">
+        <Card className="text-center py-10 space-y-2">
+          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-100">
+            <MailIcon className="w-6 h-6" />
+          </div>
+          <p className="font-bold text-slate-900 text-lg">Request sent to @{payer}</p>
+          <p className="text-slate-500 text-sm max-w-xs mx-auto">
             They'll get a notification and can pay in one tap.
           </p>
         </Card>
@@ -52,32 +55,32 @@ export default function RequestPage() {
   }
 
   return (
-    <AppShell title="Request" back>
+    <AppShell title="Request Payment" back>
       {!payer ? (
         <UserSearch onSelect={(u) => setPayer(u.username)} placeholder="Who owes you?" />
       ) : (
         <div className="space-y-5">
           <Card className="flex items-center gap-3">
             <Avatar username={payer} />
-            <p className="font-semibold">@{payer}</p>
+            <p className="font-bold text-slate-900">@{payer}</p>
             <button
-              className="ml-auto text-xs text-text-2 hover:text-text"
+              className="ml-auto text-xs font-semibold text-slate-500 hover:text-slate-900"
               onClick={() => setPayer(null)}
             >
               Change
             </button>
           </Card>
 
-          <div className="text-center py-4">
+          <div className="text-center py-6 bg-white rounded-2xl border border-slate-200 shadow-2xs">
             <Input
               inputMode="decimal"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-              className="text-center text-4xl amount border-none bg-transparent"
+              className="text-center text-4xl amount border-none bg-transparent focus:ring-0 font-extrabold text-slate-900"
               autoFocus
             />
-            <p className="text-text-2 text-sm mt-1">USDC</p>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">USDC</p>
           </div>
 
           <Input
@@ -90,7 +93,7 @@ export default function RequestPage() {
           <Button className="w-full" onClick={submit} disabled={busy || !amt}>
             {busy ? "Sending…" : `Request ${formatUSDC(amt)}`}
           </Button>
-          {error && <p className="text-danger text-sm text-center">{error}</p>}
+          {error && <p className="text-red-600 text-sm font-medium text-center">{error}</p>}
         </div>
       )}
     </AppShell>

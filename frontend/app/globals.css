@@ -1,21 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  /* PayCircle design system — dark, warm, money-serious */
-  --color-primary: #6366f1;
-  --color-primary-hover: #818cf8;
-  --color-accent: #22d3ee;
+  /* PayCircle design system — Crisp Fintech White & Deep Blue */
+  --color-primary: #0f2b5c;
+  --color-primary-hover: #1e3a8a;
+  --color-accent: #2563eb;
+  --color-navy-dark: #0a192f;
+  --color-navy-card: #0f1c3f;
+  --color-navy-light: #1e293b;
   --color-success: #10b981;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
-  --color-bg: #0a0a0f;
-  --color-surface: #13131a;
-  --color-surface-2: #1a1a24;
-  --color-border: #1e1e2e;
-  --color-text: #f8fafc;
-  --color-text-2: #94a3b8;
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-dark: #1e293b;
+  --color-text: #0f172a;
+  --color-text-2: #64748b;
 
-  --font-display: "Plus Jakarta Sans", var(--font-geist-sans), sans-serif;
+  --font-display: "Plus Jakarta Sans", var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono-amount: "JetBrains Mono", var(--font-geist-mono), monospace;
 
   --radius-card: 16px;
@@ -25,6 +29,7 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-display);
+  overflow-x: hidden;
 }
 
 /* Amounts always render in mono */
@@ -33,7 +38,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Signature element: payment-landed ripple */
+/* Signature element: payment-landed ripple (solid crisp accent) */
 @keyframes pc-ripple {
   0% {
     transform: scale(0.2);

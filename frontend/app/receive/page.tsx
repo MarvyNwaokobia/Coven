@@ -34,25 +34,25 @@ export default function ReceivePage() {
   }, [user]);
 
   return (
-    <AppShell title="Receive" back>
+    <AppShell title="Receive USDC" back>
       <div className="space-y-5">
         <Card className="flex flex-col items-center py-8">
           {qr ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={qr} alt="Payment QR code" className="rounded-xl w-64 h-64" />
+            <img src={qr} alt="Payment QR code" className="rounded-2xl w-64 h-64 border border-slate-200 p-2 bg-white shadow-2xs" />
           ) : (
             <div className="w-64 h-64 flex items-center justify-center">
               <Spinner />
             </div>
           )}
-          <p className="mt-4 font-semibold">@{user?.username}</p>
-          <p className="text-xs text-text-2">
-            {amount ? `Requesting $${amount}` : "Scan to pay any amount"}
+          <p className="mt-4 font-bold text-slate-900 text-lg">@{user?.username}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">
+            {amount ? `Requesting $${amount} USDC` : "Scan to pay any amount"}
           </p>
         </Card>
 
         <Card className="space-y-3">
-          <p className="text-sm font-semibold">Merchant mode — set an amount</p>
+          <p className="text-sm font-bold text-slate-900">Merchant mode — set amount</p>
           <Input
             inputMode="decimal"
             placeholder="Amount in USDC"
@@ -60,7 +60,7 @@ export default function ReceivePage() {
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
           />
           <Input
-            placeholder="Note — jollof rice"
+            placeholder="Note — e.g. jollof rice"
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Card, Spinner } from "./ui";
 import { api } from "@/lib/api-client";
 import { runChallenge, type ChallengeCredentials } from "@/lib/circle/challenge";
+import { LockIcon } from "./Icons";
 
 type InitResponse =
   | { alreadyInitialized: true; walletAddress: string | null }
@@ -44,17 +45,19 @@ export default function WalletSetup({
 
   return (
     <Card className="space-y-4 text-center py-8">
-      <p className="text-3xl">🔐</p>
+      <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-100">
+        <LockIcon className="w-6 h-6" />
+      </div>
       <div>
-        <p className="font-semibold">Secure your wallet</p>
-        <p className="text-sm text-text-2 mt-1">
+        <p className="font-bold text-slate-900 text-lg">Secure your wallet</p>
+        <p className="text-sm text-slate-500 mt-1 max-w-xs mx-auto">
           Set a PIN to protect your Arc wallet — no seed phrase, just a PIN only you know.
         </p>
       </div>
       <Button className="w-full" onClick={start} disabled={busy}>
         {busy ? <Spinner className="mx-auto" /> : "Set up wallet"}
       </Button>
-      {error && <p className="text-danger text-sm">{error}</p>}
+      {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
     </Card>
   );
 }

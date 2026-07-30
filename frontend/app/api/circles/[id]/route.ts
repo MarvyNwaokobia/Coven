@@ -25,7 +25,7 @@ export async function GET(
   );
   if (!isMember) return NextResponse.json({ error: "Not a member" }, { status: 403 });
 
-  const [{ data: splits }, { data: payments }] = await Promise.all([
+  const [{ data: splits }, { data: payments }, { data: goals }] = await Promise.all([
     admin
       .from("splits")
       .select("*, members:split_members(*, user:users(id, username, avatar_url))")
@@ -40,6 +40,14 @@ export async function GET(
       .eq("circle_id", id)
       .order("created_at", { ascending: false })
       .limit(20),
+    admin
+      .from("circle_goals")
+      .select(
+        "*, members:goal_members(user:users(id, username, display_name, avatar_url)), withdrawal:goal_withdrawal_requests(*, approvals:goal_withdrawal_approvals(user_id))"
+      )
+      .eq("circle_id", id)
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
 
   return NextResponse.json({
@@ -49,5 +57,6 @@ export async function GET(
     },
     splits: splits ?? [],
     payments: payments ?? [],
+    goals: goals ?? [],
   });
 }

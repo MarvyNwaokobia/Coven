@@ -44,13 +44,15 @@ export default function CreateCirclePage() {
             maxLength={40}
             autoFocus
           />
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
             {EMOJIS.map((e) => (
               <button
                 key={e}
                 onClick={() => setEmoji(e)}
-                className={`text-2xl rounded-full p-2 transition-colors ${
-                  emoji === e ? "bg-primary/25 ring-2 ring-primary" : "bg-surface-2"
+                className={`text-xl rounded-full p-2.5 transition-all ${
+                  emoji === e
+                    ? "bg-[#0a192f] text-white ring-2 ring-[#0a192f]"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 {e}
@@ -60,17 +62,17 @@ export default function CreateCirclePage() {
         </Card>
 
         <div>
-          <p className="font-semibold text-sm mb-2">Invite members</p>
+          <p className="font-bold text-slate-900 text-sm mb-2">Invite members</p>
           {members.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
               {members.map((m) => (
                 <span
                   key={m.id}
-                  className="flex items-center gap-1.5 rounded-full bg-surface-2 border border-border pl-1 pr-2.5 py-1 text-sm"
+                  className="flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 pl-1 pr-2.5 py-1 text-xs font-semibold text-slate-800"
                 >
                   <Avatar username={m.username} size={22} />@{m.username}
                   <button
-                    className="text-text-2 hover:text-danger ml-1"
+                    className="text-slate-400 hover:text-red-600 ml-1 font-bold"
                     onClick={() => setMembers((ms) => ms.filter((x) => x.id !== m.id))}
                   >
                     ×
@@ -90,9 +92,9 @@ export default function CreateCirclePage() {
         </div>
 
         <Button className="w-full" onClick={create} disabled={busy || !name.trim()}>
-          {busy ? "Creating…" : `Create ${emoji} ${name || "circle"}`}
+          {busy ? "Creating…" : `Create ${name || "Circle"}`}
         </Button>
-        {error && <p className="text-danger text-sm text-center">{error}</p>}
+        {error && <p className="text-red-600 text-sm font-medium text-center">{error}</p>}
       </div>
     </AppShell>
   );

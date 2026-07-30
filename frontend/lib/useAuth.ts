@@ -43,7 +43,18 @@ export function useAuth(options?: { optional?: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { user, loading, setUser };
+  return { user, loading, setUser, signOut };
+}
+
+export async function signInWithGoogle() {
+  const supabase = getSupabaseBrowser();
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+  if (error) throw error;
 }
 
 export async function signOut() {

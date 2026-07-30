@@ -100,6 +100,65 @@ create table if not exists split_members (
   primary key (split_id, user_id)
 );
 
+-- Goal pools (group savings — variable contributions toward a shared
+-- target, held in GoalPool.sol on-chain; withdrawal requires every member
+-- to approve, unlike splits' fixed-share auto-release).
+create table if not exists circle_goals (
+  id uuid primary key default gen_random_uuid(),
+  circle_id uuid references circles(id) not null,
+  contract_goal_id text unique, -- bytes32 goalId from GoalPool.createGoal, set once confirmed on-chain
+  creator_id uuid references users(id) not null,
+  target_amount_usdc numeric(20,6) not null,
+  collected_usdc numeric(20,6) default 0,
+  description text not null,
+  status text default 'open'
+    check (status in ('open','withdrawn','cancelled')),
+  created_at timestamptz default now()
+);
+
+-- Goal members — everyone allowed to contribute and required to approve
+-- a withdrawal. Membership is fixed at goal creation (must match the
+-- on-chain member list passed to GoalPool.createGoal).
+create table if not exists goal_members (
+  goal_id uuid references circle_goals(id) not null,
+  user_id uuid references users(id) not null,
+  primary key (goal_id, user_id)
+);
+
+-- Individual contributions toward a goal (any member, any amount, any
+-- number of times).
+create table if not exists goal_contributions (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid references circle_goals(id) not null,
+  user_id uuid references users(id) not null,
+  amount_usdc numeric(20,6) not null,
+  tx_hash text,
+  created_at timestamptz default now()
+);
+
+-- A request to withdraw the full pooled balance to a recipient. Only one
+-- may be pending per goal at a time (enforced on-chain and mirrored here).
+create table if not exists goal_withdrawal_requests (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid references circle_goals(id) not null,
+  contract_withdrawal_id text unique, -- on-chain withdrawalId (uint256, as text)
+  requested_by uuid references users(id) not null,
+  recipient_user_id uuid references users(id) not null,
+  amount_usdc numeric(20,6) not null,
+  status text default 'pending'
+    check (status in ('pending','executed','cancelled')),
+  tx_hash text, -- set once the withdrawal executes on-chain
+  created_at timestamptz default now()
+);
+
+-- One row per member who has approved a given withdrawal request.
+create table if not exists goal_withdrawal_approvals (
+  withdrawal_id uuid references goal_withdrawal_requests(id) not null,
+  user_id uuid references users(id) not null,
+  approved_at timestamptz default now(),
+  primary key (withdrawal_id, user_id)
+);
+
 -- Bank accounts (saved for offramp; numbers AES-encrypted server-side)
 create table if not exists bank_accounts (
   id uuid primary key default gen_random_uuid(),
@@ -141,7 +200,8 @@ create table if not exists activity (
     check (type in ('payment_sent','payment_received','request_received',
                     'request_paid','request_rejected','request_declined','split_created',
                     'split_paid','split_complete','offramp_completed','offramp_failed',
-                    'circle_joined')),
+                    'circle_joined','goal_created','goal_target_reached',
+                    'goal_withdrawal_requested','goal_withdrawn')),
   reference_id uuid,
   actor_id uuid references users(id),
   amount_usdc numeric(20,6),
@@ -171,6 +231,9 @@ create index if not exists idx_splits_creator on splits(creator_id);
 create index if not exists idx_activity_user on activity(user_id, created_at desc);
 create index if not exists idx_activity_unread on activity(user_id, read);
 create index if not exists idx_friendships_user on friendships(user_id);
+create index if not exists idx_circle_goals_circle on circle_goals(circle_id);
+create index if not exists idx_goal_contributions_goal on goal_contributions(goal_id);
+create index if not exists idx_goal_withdrawal_requests_goal on goal_withdrawal_requests(goal_id);
 
 -- RLS: the app uses the service-role key server-side; lock tables down for anon
 alter table users enable row level security;
@@ -184,6 +247,11 @@ alter table split_members enable row level security;
 alter table bank_accounts enable row level security;
 alter table offramp_payouts enable row level security;
 alter table activity enable row level security;
+alter table circle_goals enable row level security;
+alter table goal_members enable row level security;
+alter table goal_contributions enable row level security;
+alter table goal_withdrawal_requests enable row level security;
+alter table goal_withdrawal_approvals enable row level security;
 
 -- Authenticated users may read their own activity/payments directly (Realtime)
 create policy "own activity" on activity for select using (auth.uid() = user_id);
@@ -192,6 +260,19 @@ create policy "own payments" on payments for select
 create policy "own requests" on payment_requests for select
   using (auth.uid() = from_user_id or auth.uid() = to_user_id);
 create policy "public profiles" on users for select using (true);
+create policy "goal members can read" on circle_goals for select
+  using (exists (
+    select 1 from goal_members where goal_members.goal_id = circle_goals.id and goal_members.user_id = auth.uid()
+  ));
+create policy "goal contributions readable by goal members" on goal_contributions for select
+  using (exists (
+    select 1 from goal_members where goal_members.goal_id = goal_contributions.goal_id and goal_members.user_id = auth.uid()
+  ));
+create policy "goal withdrawals readable by goal members" on goal_withdrawal_requests for select
+  using (exists (
+    select 1 from goal_members
+    where goal_members.goal_id = goal_withdrawal_requests.goal_id and goal_members.user_id = auth.uid()
+  ));
 
 -- Realtime
 alter publication supabase_realtime add table activity;
@@ -199,3 +280,7 @@ alter publication supabase_realtime add table payments;
 alter publication supabase_realtime add table payment_requests;
 alter publication supabase_realtime add table split_members;
 alter publication supabase_realtime add table offramp_payouts;
+alter publication supabase_realtime add table circle_goals;
+alter publication supabase_realtime add table goal_contributions;
+alter publication supabase_realtime add table goal_withdrawal_requests;
+alter publication supabase_realtime add table goal_withdrawal_approvals;

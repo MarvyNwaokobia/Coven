@@ -9,6 +9,7 @@
  *
  * See: https://developers.circle.com/wallets/user-controlled/build-a-wallet-app
  */
+import { getUsdcContract } from "@/lib/contracts";
 
 const CIRCLE_API = "https://api.circle.com/v1/w3s";
 
@@ -287,5 +288,162 @@ export async function resolveAndVerifyRecentTransfer(params: {
     expectedWalletId: params.walletId,
     expectedDestinationAddress: params.destinationAddress,
     expectedAmountUsdc: params.amountUsdc,
+  });
+}
+
+/**
+ * Start a smart-contract call (e.g. USDC approve, or a GoalPool
+ * contribute/requestWithdrawal/approveWithdrawal). Same challenge model as
+ * transfers — Circle submits nothing on-chain until the user approves via
+ * the Web SDK. Confirmed against Circle's API directly: idempotencyKey,
+ * walletId, contractAddress, abiFunctionSignature, abiParameters, and a
+ * flat feeLevel field (not the nested fee/config shape from the transfer
+ * endpoint's docs, which turned out to be wrong there too).
+ */
+export async function createContractExecutionChallenge(params: {
+  userToken: string;
+  walletId: string;
+  contractAddress: string;
+  abiFunctionSignature: string;
+  // Nested arrays are how array-typed ABI params (e.g. address[]) are passed.
+  abiParameters: (string | number | string[])[];
+}): Promise<{ challengeId: string }> {
+  return circleFetch(`/user/transactions/contractExecution`, {
+    method: "POST",
+    headers: { "X-User-Token": params.userToken },
+    body: JSON.stringify({
+      idempotencyKey: crypto.randomUUID(),
+      walletId: params.walletId,
+      contractAddress: params.contractAddress,
+      abiFunctionSignature: params.abiFunctionSignature,
+      abiParameters: params.abiParameters,
+      feeLevel: "MEDIUM",
+    }),
+  });
+}
+
+/**
+ * Read current USDC allowance from a wallet to a spender (e.g. GoalPool),
+ * so we only ask for an approve challenge when actually needed. Plain RPC
+ * read — no Circle call, no wallet signature required.
+ */
+export async function getUsdcAllowance(ownerAddress: string, spenderAddress: string): Promise<bigint> {
+  const usdc = getUsdcContract();
+  return usdc.allowance(ownerAddress, spenderAddress);
+}
+
+/**
+ * Find the most recent contract-execution transaction from this wallet to
+ * a given contract, created within the lookback window. Circle's
+ * contract-execution transactions haven't been exercised through a real
+ * PIN approval as part of building this — this mirrors findRecentTransaction's
+ * matching approach (recency + address) defensively across the field names
+ * Circle might use, but the exact shape should be double-checked the first
+ * time this path runs against a live challenge.
+ */
+export async function findRecentContractExecution(params: {
+  userToken: string;
+  walletId: string;
+  contractAddress: string;
+  withinMs?: number;
+}): Promise<{ id: string } | null> {
+  const q = new URLSearchParams({ walletIds: params.walletId, order: "DESC", pageSize: "10" });
+  const { transactions } = await circleFetch<{
+    transactions: {
+      id: string;
+      contractAddress?: string;
+      destinationAddress?: string;
+      createDate: string;
+    }[];
+  }>(`/transactions?${q.toString()}`, { headers: { "X-User-Token": params.userToken } });
+
+  const cutoff = Date.now() - (params.withinMs ?? 5 * 60_000);
+  const expected = params.contractAddress.toLowerCase();
+  const match = transactions.find((t) => {
+    const recent = new Date(t.createDate).getTime() > cutoff;
+    const addressMatches =
+      t.contractAddress?.toLowerCase() === expected || t.destinationAddress?.toLowerCase() === expected;
+    return recent && addressMatches;
+  });
+  return match ? { id: match.id } : null;
+}
+
+/**
+ * Verify a contract-execution transaction settled before trusting a
+ * client's claim that a PIN-approved contract call completed.
+ */
+export async function verifyCompletedContractExecution(params: {
+  transactionId: string;
+  expectedWalletId: string;
+  expectedContractAddress: string;
+  attempts?: number;
+  delayMs?: number;
+}): Promise<{ txHash: string | null }> {
+  const attempts = params.attempts ?? 6;
+  const delayMs = params.delayMs ?? 1500;
+
+  for (let i = 0; i < attempts; i++) {
+    const { transaction } = await circleFetch<{
+      transaction: {
+        id: string;
+        state: string;
+        walletId: string;
+        contractAddress?: string;
+        destinationAddress?: string;
+        txHash?: string;
+      };
+    }>(`/transactions/${params.transactionId}`);
+
+    if (transaction.walletId !== params.expectedWalletId) {
+      throw new Error("Transaction wallet mismatch");
+    }
+    const expected = params.expectedContractAddress.toLowerCase();
+    const addressMatches =
+      transaction.contractAddress?.toLowerCase() === expected ||
+      transaction.destinationAddress?.toLowerCase() === expected;
+    if (!addressMatches) {
+      throw new Error("Transaction contract address mismatch");
+    }
+    if (FAILED_STATES.has(transaction.state)) {
+      throw new Error(`Transaction ${transaction.state.toLowerCase()}`);
+    }
+    if (SETTLED_STATES.has(transaction.state)) {
+      return { txHash: transaction.txHash ?? null };
+    }
+
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
+  }
+
+  throw new Error("Transaction is taking longer than usual to settle — check back shortly");
+}
+
+/**
+ * Full post-challenge verification for a contract call: mint a fresh
+ * session token, find the transaction the just-approved challenge
+ * produced, and confirm it settled against the expected wallet/contract.
+ */
+export async function resolveAndVerifyRecentContractExecution(params: {
+  userId: string;
+  walletId: string;
+  contractAddress: string;
+}): Promise<{ txHash: string | null }> {
+  const { userToken } = await getCircleUserToken(params.userId);
+
+  let found: { id: string } | null = null;
+  for (let i = 0; i < 5 && !found; i++) {
+    found = await findRecentContractExecution({
+      userToken,
+      walletId: params.walletId,
+      contractAddress: params.contractAddress,
+    });
+    if (!found && i < 4) await new Promise((r) => setTimeout(r, 1500));
+  }
+  if (!found) {
+    throw new Error("No matching completed transaction found — approve the PIN challenge first");
+  }
+  return verifyCompletedContractExecution({
+    transactionId: found.id,
+    expectedWalletId: params.walletId,
+    expectedContractAddress: params.contractAddress,
   });
 }

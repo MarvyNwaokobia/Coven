@@ -25,6 +25,31 @@ export const SPLIT_ESCROW_ABI = [
   "event SplitCreated(bytes32 indexed splitId, address indexed creator, address indexed recipient, uint256 total, uint256 deadline, string description)",
 ];
 
+export const GOAL_POOL_ABI = [
+  "function createGoal(address[] members, uint256 targetAmount, string description) returns (bytes32)",
+  "function contribute(bytes32 goalId, uint256 amount)",
+  "function requestWithdrawal(bytes32 goalId, address recipient) returns (uint256)",
+  "function approveWithdrawal(uint256 withdrawalId)",
+  "function cancelWithdrawalRequest(uint256 withdrawalId)",
+  "function getGoal(bytes32 goalId) view returns (address creator, uint256 targetAmount, uint256 collected, uint8 status, string description, uint256 activeWithdrawalId)",
+  "function getMembers(bytes32 goalId) view returns (address[])",
+  "function isMember(bytes32 goalId, address account) view returns (bool)",
+  "function contributionOf(bytes32 goalId, address account) view returns (uint256)",
+  "function getWithdrawal(uint256 withdrawalId) view returns (bytes32 goalId, address requester, address recipient, uint256 amount, uint8 status, uint256 approvalCount)",
+  "function hasApprovedWithdrawal(uint256 withdrawalId, address account) view returns (bool)",
+  "event GoalCreated(bytes32 indexed goalId, address indexed creator, uint256 targetAmount, string description)",
+  "event Contributed(bytes32 indexed goalId, address indexed member, uint256 amount, uint256 totalCollected)",
+  "event WithdrawalRequested(uint256 indexed withdrawalId, bytes32 indexed goalId, address indexed requester, address recipient, uint256 amount)",
+  "event WithdrawalApproved(uint256 indexed withdrawalId, address indexed member, uint256 approvalCount, uint256 requiredCount)",
+  "event WithdrawalExecuted(uint256 indexed withdrawalId, bytes32 indexed goalId, address recipient, uint256 amount)",
+];
+
+/** Minimal ERC20 read/approve ABI for allowance checks. */
+export const USDC_ABI = [
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+];
+
 export function getArcProvider(): ethers.JsonRpcProvider {
   return new ethers.JsonRpcProvider(process.env.ARC_RPC_URL);
 }
@@ -47,6 +72,18 @@ export function getSplitEscrowContract(signerOrProvider?: ethers.Signer | ethers
     SPLIT_ESCROW_ABI,
     signerOrProvider ?? getArcProvider()
   );
+}
+
+export function getGoalPoolContract(signerOrProvider?: ethers.Signer | ethers.Provider) {
+  return new ethers.Contract(
+    process.env.NEXT_PUBLIC_GOAL_POOL_CONTRACT!,
+    GOAL_POOL_ABI,
+    signerOrProvider ?? getArcProvider()
+  );
+}
+
+export function getUsdcContract(signerOrProvider?: ethers.Signer | ethers.Provider) {
+  return new ethers.Contract(process.env.ARC_USDC_ADDRESS!, USDC_ABI, signerOrProvider ?? getArcProvider());
 }
 
 /** USDC has 6 decimals. */

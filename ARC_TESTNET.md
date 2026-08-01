@@ -1,4 +1,4 @@
-# Arc Network Reference — PayCircle
+# Arc Network Reference — Coven
 
 Distilled from [docs.arc.io](https://docs.arc.io/integrate) (fetched 2026-07-17). Everything here is **Arc Testnet** — mainnet addresses are not published yet.
 
@@ -55,7 +55,7 @@ ARC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
 - **Native interface** — 18 decimals. Used for gas, `msg.value`, plain native sends.
 - **ERC-20 interface** — 6 decimals. Used for `transfer` / `transferFrom` / `approve` / `balanceOf`.
 
-Implications for PayCircle:
+Implications for Coven:
 
 - `PayCircle.sol` and `SplitEscrow.sol` interact with USDC **only via the ERC-20 interface at `0x3600...0000`**, so all contract math stays in 6 decimals — matches `toUsdcUnits`/`fromUsdcUnits` in `frontend/lib/contracts/index.ts` and the fee math in the Solidity (`amount_usdc numeric(20,6)` in the DB schema too).
 - `balanceOf()` truncates to 6 decimals: dust below `0.000001` USDC exists in the native balance but reads as `0` via ERC-20. Irrelevant at our amounts, but don't be surprised by it.
@@ -66,7 +66,7 @@ Implications for PayCircle:
 
 ## 3. Contract Addresses (Arc Testnet)
 
-### The ones PayCircle needs
+### The ones Coven needs
 
 | Contract | Address | Notes |
 |---|---|---|
@@ -104,7 +104,7 @@ Implications for PayCircle:
 
 Arc is EVM-compatible (Ethereum bytecode + RPC). CREATE2, EIP-7702, and block-hash history behave exactly like Ethereum. Solidity `^0.8.24` and OpenZeppelin work as-is. Differences:
 
-| Difference | Impact on PayCircle |
+| Difference | Impact on Coven |
 |---|---|
 | `PREVRANDAO` always returns `0` | None — no randomness used in `PayCircle.sol` / `SplitEscrow.sol` |
 | Blob txs (type-3) rejected | None |
@@ -176,7 +176,7 @@ These are wired into `frontend/.env.example` as `NEXT_PUBLIC_PAYCIRCLE_CONTRACT`
 
 - Circle Programmable Wallets support Arc Testnet — blockchain identifier **`ARC-TESTNET`** (matches `CIRCLE_BLOCKCHAIN` in `frontend/lib/circle/wallets.ts`).
 - **Smart Contract Accounts (SCA) on Arc Testnet work with Circle Gas Station to auto-sponsor transaction fees** — worth using for recipient wallets so brand-new recipients can withdraw/receive before they hold any USDC for gas.
-- Circle also offers pre-audited deploy templates via the Wallets API (ERC-20/721/1155/Airdrop) — not needed here; PayCircle deploys `PayCircle.sol` and `SplitEscrow.sol` itself with Foundry.
+- Circle also offers pre-audited deploy templates via the Wallets API (ERC-20/721/1155/Airdrop) — not needed here; Coven deploys `PayCircle.sol` and `SplitEscrow.sol` itself with Foundry.
 
 ---
 

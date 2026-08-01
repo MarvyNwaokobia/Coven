@@ -13,7 +13,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PayCircle — Social USDC Payments on Arc",
+  title: "Coven — Social USDC Payments on Arc",
   description:
     "Send USDC to anyone from any chain, cash out to any bank — built around communities not wallets.",
   manifest: "/manifest.json",

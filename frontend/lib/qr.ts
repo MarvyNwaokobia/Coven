@@ -2,8 +2,8 @@ import QRCode from "qrcode";
 
 /**
  * Payment URI format:
- *   paycircle://pay?to=@username&amount=50&currency=USDC&note=for+coffee
- * Static QR (any amount):  paycircle://pay?to=@godbrand
+ *   coven://pay?to=@username&amount=50&currency=USDC&note=for+coffee
+ * Static QR (any amount):  coven://pay?to=@godbrand
  */
 export interface PaymentURIParams {
   username: string;
@@ -18,12 +18,12 @@ export function buildPaymentURI(params: PaymentURIParams): string {
   if (params.amount) q.set("amount", String(params.amount));
   if (params.currency) q.set("currency", params.currency);
   if (params.note) q.set("note", params.note);
-  return `paycircle://pay?${q.toString()}`;
+  return `coven://pay?${q.toString()}`;
 }
 
 export function parsePaymentURI(uri: string): PaymentURIParams | null {
   try {
-    const url = new URL(uri.replace(/^paycircle:\/\//, "https://paycircle.app/"));
+    const url = new URL(uri.replace(/^coven:\/\//, "https://coven.app/"));
     const to = url.searchParams.get("to");
     if (!to) return null;
     return {

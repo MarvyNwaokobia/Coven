@@ -29,9 +29,8 @@ export default function Landing() {
 
       <div className="relative z-10 mx-auto w-full max-w-md flex-1 flex flex-col px-6 py-8">
         <header className="flex items-center justify-between py-2 border-b border-slate-200/60">
-          <span className="font-extrabold text-xl tracking-tight text-[#0a192f] flex items-center gap-1">
-            <span>Pay</span>
-            <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md text-sm border border-blue-100">Circle</span>
+          <span className="font-extrabold text-xl tracking-tight text-[#0a192f]">
+            Coven
           </span>
           <Link href="/signup" className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200 transition-colors">
             Sign in

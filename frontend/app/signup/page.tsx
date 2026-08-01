@@ -39,7 +39,7 @@ export default function SignupPage() {
       <div className="relative z-10 w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <Link href="/" className="inline-block font-extrabold text-2xl tracking-tight text-[#0a192f]">
-            Pay<span className="text-blue-600">Circle</span>
+            Coven
           </Link>
           <p className="text-xs font-semibold text-slate-500">
             Social USDC Payments on Arc
@@ -48,7 +48,7 @@ export default function SignupPage() {
 
         <Card className="py-8 space-y-5 text-center">
           <div>
-            <h2 className="font-bold text-slate-900 text-lg">Welcome to PayCircle</h2>
+            <h2 className="font-bold text-slate-900 text-lg">Welcome to Coven</h2>
             <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto font-medium">
               Sign in or create your account using your Google account to get started.
             </p>

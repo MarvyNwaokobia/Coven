@@ -1,6 +1,6 @@
 {
-  "name": "PayCircle",
-  "short_name": "PayCircle",
+  "name": "Coven",
+  "short_name": "Coven",
   "description": "Send USDC to anyone from any chain, cash out to any bank.",
   "start_url": "/home",
   "display": "standalone",

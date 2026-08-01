@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* PayCircle design system — Crisp Fintech White & Deep Blue */
+  /* Coven design system — Crisp Fintech White & Deep Blue */
   --color-primary: #0f2b5c;
   --color-primary-hover: #1e3a8a;
   --color-accent: #2563eb;

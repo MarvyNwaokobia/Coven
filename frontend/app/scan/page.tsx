@@ -46,9 +46,9 @@ export default function ScanPage() {
   }, []);
 
   function handleScan(raw: string) {
-    // PayCircle QRs look like paycircle://pay?to=alice&amount=20 or raw URLs
+    // Coven QRs look like coven://pay?to=alice&amount=20 or raw URLs
     try {
-      if (raw.startsWith("paycircle://") || raw.includes("/send?")) {
+      if (raw.startsWith("coven://") || raw.includes("/send?")) {
         const query = raw.split("?")[1];
         if (query) {
           router.replace(`/send?${query}`);
@@ -70,7 +70,7 @@ export default function ScanPage() {
           <div id="qr-reader" className="overflow-hidden rounded-2xl border-0" />
           <div className="py-4 text-xs font-semibold text-slate-500 flex items-center justify-center gap-2">
             <ScanIcon className="w-4 h-4 text-blue-600" />
-            <span>Point camera at any PayCircle QR</span>
+            <span>Point camera at any Coven QR</span>
           </div>
         </Card>
 

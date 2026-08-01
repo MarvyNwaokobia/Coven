@@ -17,7 +17,7 @@ export interface User {
 
 export interface Payment {
   id: string;
-  from_user_id: string | null; // null = external deposit, not sent via PayCircle
+  from_user_id: string | null; // null = external deposit, not sent via Coven
   to_user_id: string;
   amount_usdc: number;
   fee_usdc: number;

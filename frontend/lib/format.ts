@@ -27,7 +27,7 @@ export const USERNAME_RULES = {
   minLength: 3,
   maxLength: 20,
   pattern: /^[a-zA-Z0-9_]+$/,
-  reservedWords: ["paycircle", "admin", "support", "help", "official"],
+  reservedWords: ["coven", "admin", "support", "help", "official"],
 };
 
 export function validateUsername(username: string): string | null {

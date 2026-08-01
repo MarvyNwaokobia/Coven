@@ -2,7 +2,7 @@
 
 import { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
-/* Small UI primitives following the PayCircle White & Deep Blue Fintech system. */
+/* Small UI primitives following the Coven White & Deep Blue Fintech system. */
 
 export function Button({
   variant = "primary",

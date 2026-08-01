@@ -76,9 +76,8 @@ export default function AppShell({
               ←
             </button>
           ) : (
-            <Link href="/home" className="font-extrabold text-lg tracking-tight text-[#0a192f] flex items-center gap-1">
-              <span>Pay</span>
-              <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md text-sm border border-blue-100">Circle</span>
+            <Link href="/home" className="font-extrabold text-lg tracking-tight text-[#0a192f]">
+              Coven
             </Link>
           )}
           {title && <h1 className="font-bold text-slate-900 text-base">{title}</h1>}

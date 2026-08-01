@@ -115,7 +115,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <p className="font-extrabold text-slate-900 text-lg">@{user?.username}</p>
-            <p className="text-xs font-semibold text-slate-500">PayCircle Handle</p>
+            <p className="text-xs font-semibold text-slate-500">Coven Handle</p>
           </div>
         </Card>
         {avatarError && <p className="text-red-600 text-xs font-medium">{avatarError}</p>}

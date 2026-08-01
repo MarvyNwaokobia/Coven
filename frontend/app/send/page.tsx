@@ -112,7 +112,7 @@ function SendFlow() {
               <Avatar username={recipient} />
               <div>
                 <p className="font-bold text-slate-900">@{recipient}</p>
-                <p className="text-xs font-medium text-slate-500">PayCircle Balance → Arc</p>
+                <p className="text-xs font-medium text-slate-500">Coven Balance → Arc</p>
               </div>
             </div>
             <div className="border-t border-slate-200/80 pt-3 space-y-2 text-sm">

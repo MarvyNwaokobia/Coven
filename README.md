@@ -1,4 +1,4 @@
-# PayCircle — Social USDC Payments on Arc
+# Coven — Social USDC Payments on Arc
 
 > **Hackathon:** Arc Build Hackathon · Circle × Arc
 > **Track:** DeFi (Payments Infrastructure)
@@ -30,7 +30,7 @@
 
 ## 1. Product Vision
 
-**PayCircle** is a social USDC payments app built on Arc. Users get a @username, a friends list, and belong to Circles — groups where money moves together. Payments settle on Arc in USDC via Circle Programmable Wallets. Senders can pay from any chain — CCTP handles cross-chain routing invisibly. Recipients cash out to their local bank account anywhere in the world.
+**Coven** is a social USDC payments app built on Arc. Users get a @username, a friends list, and belong to Circles — groups where money moves together. Payments settle on Arc in USDC via Circle Programmable Wallets. Senders can pay from any chain — CCTP handles cross-chain routing invisibly. Recipients cash out to their local bank account anywhere in the world.
 
 ### Why This Beats Every Existing Crypto Payments App
 
@@ -41,7 +41,7 @@
 | CIP | ✅ | ❌ | ❌ Needs wallet | ❌ |
 | Venmo | ❌ Fiat only | ✅ US only | ✅ | ✅ |
 | MiniPay | ❌ Celo only | ⚠️ Limited | ✅ | ❌ |
-| **PayCircle** | ✅ Any chain | ✅ 20+ countries | ✅ | ✅ |
+| **Coven** | ✅ Any chain | ✅ 20+ countries | ✅ | ✅ |
 
 ### The Arc-Native Flow Nobody Else Can Replicate
 
@@ -98,7 +98,7 @@ This full flow — from any chain to a local bank account — is only possible o
 3. Enter amount in USDC (or local currency — auto-converts)
 4. Add a note (optional)
 5. Select source:
-   a. PayCircle balance (already on Arc)
+   a. Coven balance (already on Arc)
    b. Connected wallet on another chain → CCTP routes automatically
 6. Confirm → payment settles on Arc in <500ms
 7. Recipient notified via push + SMS
@@ -125,7 +125,7 @@ Merchant side:
 4. Display QR on phone or print it
 
 Customer side:
-1. Open PayCircle app → tap "Scan"
+1. Open Coven app → tap "Scan"
 2. Point camera at merchant QR
 3. Confirm amount → pay
 4. Merchant sees payment confirmation instantly
@@ -529,7 +529,7 @@ const circle = initiateUserControlledWalletsClient({
 });
 
 /**
- * Create a Circle wallet for a new PayCircle user.
+ * Create a Circle wallet for a new Coven user.
  * Called on account creation — before username selection.
  */
 export async function createUserWallet(userId: string): Promise<{
@@ -868,7 +868,7 @@ const USERNAME_RULES = {
   minLength: 3,
   maxLength: 20,
   pattern: /^[a-zA-Z0-9_]+$/,  // letters, numbers, underscore only
-  reservedWords: ["paycircle", "admin", "support", "help", "official"],
+  reservedWords: ["coven", "admin", "support", "help", "official"],
 };
 
 // Username lookup — resolves to wallet address
@@ -880,13 +880,13 @@ const USERNAME_RULES = {
 
 ```typescript
 // QR code encodes a payment URI
-// Format: paycircle://pay?to=@username&amount=50&currency=USDC&note=for+coffee
+// Format: coven://pay?to=@username&amount=50&currency=USDC&note=for+coffee
 
 // Static QR (for receiving any amount):
-// paycircle://pay?to=@godbrand
+// coven://pay?to=@godbrand
 
 // Dynamic QR (merchant sets amount):
-// paycircle://pay?to=@buka_stall&amount=2500&currency=NGN&note=jollof+rice
+// coven://pay?to=@buka_stall&amount=2500&currency=NGN&note=jollof+rice
 
 // QR generation
 import QRCode from "qrcode";
@@ -985,7 +985,7 @@ Push notification triggers:
 
 ```
 ┌─────────────────────────────────────┐
-│  PayCircle          🔔    👤        │
+│  Coven            🔔    👤        │
 ├─────────────────────────────────────┤
 │                                     │
 │         Your Balance                │
@@ -1044,7 +1044,7 @@ Step 2 — How much?
 │  [ for coffee ______________ ]      │
 │                                     │
 │  Pay from                           │
-│  ○ PayCircle balance ($284.50)      │
+│  ○ Coven balance ($284.50)          │
 │  ○ Ethereum wallet (0xabc...def)    │
 │  ○ Base wallet                      │
 │                                     │
@@ -1058,7 +1058,7 @@ Step 3 — Confirm
 │  Amount:  $20.00 USDC               │
 │  Fee:     $0.00 (P2P on Arc)        │
 │  Note:    "for coffee"              │
-│  From:    PayCircle balance         │
+│  From:    Coven balance             │
 │                                     │
 │  Settles on Arc in <500ms           │
 │                                     │
@@ -1548,7 +1548,7 @@ PLATFORM_FEE_WALLET=                   # Arc address receives platform fees
 ## 14. File Structure
 
 ```
-paycircle/
+coven/
 ├── contracts/
 │   ├── src/
 │   │   ├── PayCircle.sol
@@ -1615,7 +1615,7 @@ paycircle/
 │   │   ├── yellowcard/
 │   │   │   └── offramp.ts
 │   │   ├── contracts/
-│   │   │   ├── paycircle.ts
+│   │   │   ├── coven.ts
 │   │   │   ├── splitEscrow.ts
 │   │   │   └── abis/
 │   │   ├── notifications/
@@ -1672,11 +1672,11 @@ paycircle/
 - [ ] At least 1 successful Yellow Card offramp initiated
 - [ ] At least 2 circles with active splits
 - [ ] 3-minute Loom demo covering: signup → send → circle split → QR payment → cash out to bank
-- [ ] Deck: problem (crypto payments are fragmented) → solution (PayCircle) → Arc advantage (CCTP + sub-500ms + USDC gas) → live demo → revenue model
+- [ ] Deck: problem (crypto payments are fragmented) → solution (Coven) → Arc advantage (CCTP + sub-500ms + USDC gas) → live demo → revenue model
 - [ ] Checkpoint 1 submitted by July 19 ← **This Sunday**
 - [ ] Checkpoint 2 submitted by July 26
 - [ ] Final submitted by August 9
 
 ---
 
-*PayCircle · Send to anyone · From any chain · Cash out anywhere · Built on Arc*
+*Coven · Send to anyone · From any chain · Cash out anywhere · Built on Arc*

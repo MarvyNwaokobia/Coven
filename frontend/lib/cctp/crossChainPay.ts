@@ -27,13 +27,47 @@ const CCTP_ENV = (process.env.NEXT_PUBLIC_CCTP_ENV as "mainnet" | "testnet") ?? 
 /** Chains Coven currently offers as a cross-chain payment source. */
 export type SourceChain = "ethereum" | "base" | "polygon" | "arbitrum";
 
-/** Arc CCTP domain — 26 on testnet (see docs/ARC_TESTNET.md §3). */
-export const ARC_DOMAIN = getChain("arc" as SupportedChain, CCTP_ENV).domain;
+/**
+ * Per-chain RPC endpoints. These are not optional: every chain in the SDK's
+ * testnet registry ships with `rpc: undefined`, so without an override its
+ * public-client helper calls viem's `http()` with no URL and throws
+ * "No URL was provided to the Transport" before any transfer can start.
+ * Public defaults keep the demo working; override via env for a paid node.
+ */
+const RPC_URLS: Record<SourceChain | "arc", string> = {
+  ethereum:
+    process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com",
+  base: process.env.NEXT_PUBLIC_BASE_RPC_URL ?? "https://base-sepolia-rpc.publicnode.com",
+  polygon: process.env.NEXT_PUBLIC_POLYGON_RPC_URL ?? "https://polygon-amoy-bor-rpc.publicnode.com",
+  arbitrum:
+    process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ?? "https://arbitrum-sepolia-rpc.publicnode.com",
+  arc: process.env.NEXT_PUBLIC_ARC_RPC_URL ?? "https://rpc.testnet.arc.network",
+};
+
+/**
+ * The SDK looks its `rpcs` map up by `chainConfig.name.toLowerCase()` — the
+ * display name ("ethereum sepolia"), not the `SupportedChain` key
+ * ("ethereum") its own type advertises. We register both spellings so the
+ * lookup resolves either way, and keeps working if the SDK fixes the key.
+ */
+function rpcOverrides(): Partial<Record<SupportedChain, string>> {
+  const out: Record<string, string> = {};
+  for (const [chain, url] of Object.entries(RPC_URLS)) {
+    out[chain] = url;
+    try {
+      out[getChain(chain as SupportedChain, CCTP_ENV).name.toLowerCase()] = url;
+    } catch {
+      // Chain not in this env's registry (e.g. arc has no mainnet entry yet).
+    }
+  }
+  return out as Partial<Record<SupportedChain, string>>;
+}
 
 function getCctpClient(): CctpClient {
   return new CctpClient({
     env: CCTP_ENV,
     attestationApiUrl: process.env.CCTP_ATTESTATION_API,
+    rpcs: rpcOverrides(),
   });
 }
 

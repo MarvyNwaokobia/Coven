@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
-import { recordActivity } from "@/lib/server/activity";
+import { creditPayment } from "@/lib/server/payments";
 
 /**
  * POST /api/payments/send
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const sender = await getAuthedUser(req);
   if (!sender) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { toUsername, amountUsdc, note, sourceChain, txHash } = await req.json();
+  const { toUsername, amountUsdc, note, sourceChain } = await req.json();
   const amount = Number(amountUsdc);
   if (!toUsername || !amount || amount <= 0) {
     return NextResponse.json({ error: "toUsername and positive amountUsdc required" }, { status: 400 });
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   const fee = isCrossChain ? Math.round(amount * 0.005 * 1e6) / 1e6 : 0;
 
   let status: "pending" | "completed" = "completed";
-  let recordedTxHash: string | null = txHash ?? null;
+  let recordedTxHash: string | null = null;
 
   if (!isCrossChain) {
     if (!sender.circle_wallet_id) {
@@ -66,7 +66,13 @@ export async function POST(req: Request) {
       );
     }
   } else {
-    status = "pending"; // completed by /api/cctp/relay
+    // Cross-chain: nothing has landed on Arc yet. The row stays pending with
+    // no tx_hash — /api/cctp/relay fills in the Arc mint hash it gets back
+    // from its own receiveMessage call, and only then are totals and
+    // activity recorded. We deliberately don't take a hash from the client
+    // here: an unverified one would be recorded as settlement for a payment
+    // that may never arrive.
+    status = "pending";
   }
 
   const { data: payment, error } = await admin
@@ -86,31 +92,17 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  await Promise.all([
-    admin.rpc("increment_user_totals", {
-      sender_id: sender.id,
-      recipient_id: recipient.id,
+  // Only credit a payment that actually settled. Pending cross-chain sends
+  // are credited by /api/cctp/relay once the mint lands on Arc.
+  if (status === "completed") {
+    await creditPayment({
+      paymentId: payment.id,
+      senderId: sender.id,
+      recipientId: recipient.id,
       amount,
-    }),
-    recordActivity([
-      {
-        user_id: sender.id,
-        type: "payment_sent",
-        reference_id: payment.id,
-        actor_id: sender.id,
-        amount_usdc: amount,
-        note: note ?? null,
-      },
-      {
-        user_id: recipient.id,
-        type: "payment_received",
-        reference_id: payment.id,
-        actor_id: sender.id,
-        amount_usdc: amount,
-        note: note ?? null,
-      },
-    ]),
-  ]);
+      note: note ?? null,
+    });
+  }
 
   return NextResponse.json({ payment });
 }

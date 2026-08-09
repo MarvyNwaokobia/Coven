@@ -27,7 +27,7 @@ const CCTP_ENV = (process.env.NEXT_PUBLIC_CCTP_ENV as "mainnet" | "testnet") ?? 
 /** Chains Coven currently offers as a cross-chain payment source. */
 export type SourceChain = "ethereum" | "base" | "polygon" | "arbitrum";
 
-/** Arc CCTP domain — 26 on testnet (see ARC_TESTNET.md §3). */
+/** Arc CCTP domain — 26 on testnet (see docs/ARC_TESTNET.md §3). */
 export const ARC_DOMAIN = getChain("arc" as SupportedChain, CCTP_ENV).domain;
 
 function getCctpClient(): CctpClient {

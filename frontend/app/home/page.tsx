@@ -4,13 +4,37 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import ActivityFeed from "@/components/ActivityFeed";
-import { Card, Spinner, Avatar, Button } from "@/components/ui";
-import { SendIcon, RequestIcon, ReceiveIcon, CashoutIcon } from "@/components/Icons";
+import {
+  Card,
+  Avatar,
+  Button,
+  Skeleton,
+  SkeletonList,
+  SectionHeading,
+  Alert,
+} from "@/components/ui";
+import {
+  SendIcon,
+  RequestIcon,
+  ReceiveIcon,
+  CashoutIcon,
+  EyeIcon,
+  EyeOffIcon,
+  BoltIcon,
+  ChevronRightIcon,
+} from "@/components/Icons";
 import { api } from "@/lib/api-client";
 import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC, formatLocal } from "@/lib/format";
 import type { ActivityItem, PaymentRequest } from "@/lib/types";
+
+const QUICK_ACTIONS = [
+  { href: "/send", label: "Send", hint: "To any @handle", icon: SendIcon },
+  { href: "/request", label: "Request", hint: "Ask to be paid", icon: RequestIcon },
+  { href: "/receive", label: "Receive", hint: "Share your QR", icon: ReceiveIcon },
+  { href: "/cashout", label: "Cash out", hint: "Straight to bank", icon: CashoutIcon },
+];
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -18,6 +42,9 @@ export default function HomePage() {
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [requests, setRequests] = useState<PaymentRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hidden, setHidden] = useState(false);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -34,116 +61,215 @@ export default function HomePage() {
   }, [user]);
 
   async function payRequest(id: string) {
+    setPendingId(id);
+    setError("");
     try {
       await approveTransfer({ kind: "request", requestId: id });
       await api(`/api/payments/${id}/pay`, { json: {} });
       setRequests((rs) => rs.filter((r) => r.id !== id));
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Payment failed");
+      setError(e instanceof Error ? e.message : "Payment failed");
+    } finally {
+      setPendingId(null);
     }
   }
 
   async function rejectRequest(id: string) {
+    setPendingId(id);
+    setError("");
     try {
       await api(`/api/payments/${id}/reject`, { json: {} });
       setRequests((rs) => rs.filter((r) => r.id !== id));
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Could not decline request");
+      setError(e instanceof Error ? e.message : "Could not decline request");
+    } finally {
+      setPendingId(null);
     }
   }
 
   return (
-    <AppShell>
-      {/* Hero Balance Card — Solid Deep Royal Navy, No Gradients */}
-      <div className="rounded-2xl bg-[#0a192f] text-white p-6 shadow-md border border-slate-800 text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
-        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Available Balance</p>
-        <p className="amount text-4xl font-extrabold mt-2 tracking-tight">
-          {balance ? formatUSDC(balance.usdc) : "—"}
-          <span className="text-sm font-medium text-slate-400 ml-1.5">USDC</span>
-        </p>
-        {balance && (
-          <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-medium text-slate-300">
-            <span>≈ {formatLocal(balance.localEstimate)} NGN</span>
-          </div>
-        )}
-      </div>
-
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-4 gap-2.5 mt-4">
-        {[
-          { href: "/send", label: "Send", icon: SendIcon },
-          { href: "/request", label: "Request", icon: RequestIcon },
-          { href: "/receive", label: "Receive", icon: ReceiveIcon },
-          { href: "/cashout", label: "Cash Out", icon: CashoutIcon },
-        ].map((a) => {
-          const Icon = a.icon;
-          return (
-            <Link
-              key={a.href}
-              href={a.href}
-              className="flex flex-col items-center gap-2 rounded-2xl bg-white border border-slate-200/90 py-3.5 px-2 hover:border-blue-600 hover:shadow-xs transition-all text-center group"
-            >
-              <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-blue-50 text-[#0a192f] group-hover:text-blue-600 flex items-center justify-center transition-colors border border-slate-200/60">
-                <Icon className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">{a.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Payment Requests Section */}
-      {requests.length > 0 && (
-        <section className="mt-6">
-          <h2 className="font-bold text-slate-900 text-sm tracking-wide mb-2.5">Requests for you</h2>
-          <ul className="space-y-2.5">
-            {requests.map((r) => (
-              <li key={r.id}>
-                <Card className="space-y-3 py-3.5">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      username={r.from_user?.username ?? "?"}
-                      avatarUrl={r.from_user?.avatar_url}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">
-                        @{r.from_user?.username} requests{" "}
-                        <span className="amount font-bold text-slate-900">{formatUSDC(r.amount_usdc)}</span>
-                      </p>
-                      {r.note && <p className="text-xs text-slate-500 truncate">“{r.note}”</p>}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      className="flex-1 px-4 py-2 text-xs"
-                      onClick={() => rejectRequest(r.id)}
-                    >
-                      Decline
-                    </Button>
-                    <Button className="flex-1 px-4 py-2 text-xs" onClick={() => payRequest(r.id)}>
-                      Pay
-                    </Button>
-                  </div>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </section>
+    <AppShell
+      wide
+      title={user ? `Hey, @${user.username}` : "Home"}
+      subtitle="Your money, your circles"
+    >
+      {error && (
+        <div className="mb-4">
+          <Alert>{error}</Alert>
+        </div>
       )}
 
-      {/* Activity Feed Section */}
-      <section className="mt-6">
-        <h2 className="font-bold text-slate-900 text-sm tracking-wide mb-2.5">Recent Activity</h2>
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Spinner />
+      <div className="grid gap-5 lg:grid-cols-3 lg:gap-6">
+        {/* ------------------------------------------------ Primary column */}
+        <div className="space-y-5 lg:col-span-2 lg:space-y-6">
+          {/* Balance */}
+          <section
+            aria-label="Balance"
+            className="animate-fade-up relative overflow-hidden rounded-2xl bg-brand p-6 text-white shadow-e3 lg:p-8"
+          >
+            {/* Depth without gradients: one soft accent bloom, clipped. */}
+            <div
+              aria-hidden="true"
+              className="animate-drift pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-accent/25 blur-3xl"
+            />
+            <div
+              aria-hidden="true"
+              className="animate-drift pointer-events-none absolute -bottom-24 -left-10 h-48 w-48 rounded-full bg-white/5 blur-3xl"
+              style={{ animationDelay: "-6s" }}
+            />
+
+            <div className="relative flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-white/55">
+                  Available balance
+                </p>
+
+                {balance ? (
+                  <p className="amount animate-count-in mt-2.5 text-4xl font-extrabold tracking-tight lg:text-5xl">
+                    {hidden ? "••••••" : formatUSDC(balance.usdc)}
+                    <span className="ml-2 align-middle text-sm font-semibold text-white/50">
+                      USDC
+                    </span>
+                  </p>
+                ) : (
+                  <Skeleton className="mt-3 h-11 w-52 bg-white/10 lg:h-12" />
+                )}
+              </div>
+
+              <button
+                onClick={() => setHidden((h) => !h)}
+                aria-label={hidden ? "Show balance" : "Hide balance"}
+                aria-pressed={hidden}
+                className="-mr-1 -mt-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-white/60 transition-[background-color,color,translate,scale] duration-200 hover:bg-white/10 hover:text-white active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                {hidden ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+            </div>
+
+            <div className="relative mt-5 flex flex-wrap items-center gap-2">
+              {balance && !hidden && (
+                <span className="tnum inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
+                  ≈ {formatLocal(balance.localEstimate)} NGN
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
+                <BoltIcon className="h-3.5 w-3.5" />
+                Settles on Arc in &lt;500ms
+              </span>
+            </div>
+          </section>
+
+          {/* Quick actions */}
+          <section aria-label="Quick actions">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {QUICK_ACTIONS.map((a, i) => {
+                const Icon = a.icon;
+                return (
+                  <Link
+                    key={a.href}
+                    href={a.href}
+                    style={{ ["--i" as string]: i }}
+                    className="animate-fade-up group flex min-h-24 flex-col justify-between rounded-xl border border-line bg-surface p-4 shadow-e1 transition-[border-color,box-shadow,translate,scale] duration-200 ease-out-soft hover:-translate-y-1.5 hover:border-accent-line hover:shadow-e3 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-ink transition-[background-color,color,scale] duration-200 ease-spring group-hover:scale-110 group-hover:bg-accent group-hover:text-white">
+                      <Icon className="h-4.5 w-4.5 transition-transform duration-200 ease-spring group-hover:-translate-y-px group-hover:translate-x-px" />
+                    </span>
+                    <span className="mt-3">
+                      <span className="block text-sm font-bold text-ink transition-colors duration-200 group-hover:text-accent">
+                        {a.label}
+                      </span>
+                      <span className="block text-xs text-ink-mute">{a.hint}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Requests waiting on you */}
+          {requests.length > 0 && (
+            <section aria-label="Payment requests">
+              <SectionHeading title="Waiting on you" count={requests.length} />
+              <ul className="stagger space-y-2.5">
+                {requests.map((r, i) => (
+                  <li key={r.id} style={{ ["--i" as string]: i }}>
+                    <Card className="border-warn-line bg-warn-soft/40">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Avatar
+                          username={r.from_user?.username ?? "?"}
+                          avatarUrl={r.from_user?.avatar_url}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-ink">
+                            <span className="font-bold">@{r.from_user?.username}</span> requests{" "}
+                            <span className="amount font-bold">{formatUSDC(r.amount_usdc)}</span>
+                          </p>
+                          {r.note && (
+                            <p className="truncate text-xs text-ink-soft">“{r.note}”</p>
+                          )}
+                        </div>
+                        <div className="flex w-full gap-2 sm:w-auto">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="flex-1 sm:flex-none"
+                            disabled={pendingId === r.id}
+                            onClick={() => rejectRequest(r.id)}
+                          >
+                            Decline
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="flex-1 sm:flex-none"
+                            loading={pendingId === r.id}
+                            onClick={() => payRequest(r.id)}
+                          >
+                            Pay {formatUSDC(r.amount_usdc)}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Activity on mobile lives at the bottom of the single column. */}
+          <section aria-label="Recent activity" className="lg:hidden">
+            <SectionHeading
+              title="Recent activity"
+              action={
+                <Link
+                  href="/history"
+                  className="inline-flex items-center gap-0.5 rounded text-xs font-bold text-accent transition-colors hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  See all <ChevronRightIcon className="h-3.5 w-3.5" />
+                </Link>
+              }
+            />
+            {loading ? <SkeletonList rows={4} /> : <ActivityFeed items={activity.slice(0, 6)} />}
+          </section>
+        </div>
+
+        {/* ---------------------------------------------- Secondary column */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24">
+            <SectionHeading
+              title="Recent activity"
+              action={
+                <Link
+                  href="/history"
+                  className="inline-flex items-center gap-0.5 rounded text-xs font-bold text-accent transition-colors hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  See all <ChevronRightIcon className="h-3.5 w-3.5" />
+                </Link>
+              }
+            />
+            {loading ? <SkeletonList rows={6} /> : <ActivityFeed items={activity.slice(0, 8)} />}
           </div>
-        ) : (
-          <ActivityFeed items={activity} />
-        )}
-      </section>
+        </aside>
+      </div>
     </AppShell>
   );
 }

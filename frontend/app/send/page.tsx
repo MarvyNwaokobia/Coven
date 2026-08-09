@@ -5,11 +5,16 @@ import { useSearchParams, useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import UserSearch from "@/components/UserSearch";
 import PaymentSuccess from "@/components/PaymentSuccess";
-import { Button, Input, Card, Avatar } from "@/components/ui";
+import Stepper from "@/components/Stepper";
+import { Button, Input, Card, Avatar, AmountInput, Alert } from "@/components/ui";
+import { BoltIcon, SendIcon } from "@/components/Icons";
 import { api } from "@/lib/api-client";
 import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC } from "@/lib/format";
+
+const STEPS = ["Recipient", "Amount", "Confirm"];
+const PRESETS = [5, 10, 20, 50];
 
 function SendFlow() {
   const router = useRouter();
@@ -28,6 +33,7 @@ function SendFlow() {
   const [success, setSuccess] = useState(false);
 
   const amt = parseFloat(amount) || 0;
+  const stepIndex = { who: 0, amount: 1, confirm: 2 }[step];
 
   async function confirm() {
     setBusy(true);
@@ -56,91 +62,138 @@ function SendFlow() {
   }
 
   return (
-    <AppShell title={recipient ? `Send to @${recipient}` : "Send Money"} back>
-      {step === "who" && (
-        <UserSearch
-          onSelect={(u) => {
-            setRecipient(u.username);
-            setStep("amount");
-          }}
-        />
-      )}
+    <AppShell title={recipient ? `Send to @${recipient}` : "Send money"} back>
+      <div className="mx-auto max-w-lg">
+        <Stepper steps={STEPS} current={stepIndex} />
 
-      {step === "amount" && recipient && (
-        <div className="space-y-5">
-          <div className="text-center py-6 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-            <Input
-              inputMode="decimal"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-              className="text-center text-4xl amount border-none bg-transparent focus:ring-0 font-extrabold text-slate-900"
-              autoFocus
+        {step === "who" && (
+          <div className="mt-6">
+            <UserSearch
+              onSelect={(u) => {
+                setRecipient(u.username);
+                setStep("amount");
+              }}
             />
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">USDC</p>
           </div>
+        )}
 
-          <div className="flex gap-2 justify-center">
-            {[5, 10, 20, 50].map((v) => (
-              <button
-                key={v}
-                onClick={() => setAmount(String(v))}
-                className="rounded-full bg-slate-100 border border-slate-200 px-4 py-1.5 text-xs font-bold text-slate-700 hover:bg-[#0a192f] hover:text-white hover:border-[#0a192f] transition-all"
-              >
-                ${v}
-              </button>
-            ))}
-          </div>
-
-          <Input
-            placeholder="Note (optional) — for coffee"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={100}
-          />
-
-          <Button className="w-full" disabled={!amt} onClick={() => setStep("confirm")}>
-            Continue
-          </Button>
-        </div>
-      )}
-
-      {step === "confirm" && recipient && (
-        <div className="space-y-5">
-          <Card className="space-y-4">
-            <div className="flex items-center gap-3">
+        {step === "amount" && recipient && (
+          <div className="mt-6 space-y-4">
+            <Card className="flex items-center gap-3 py-3">
               <Avatar username={recipient} />
-              <div>
-                <p className="font-bold text-slate-900">@{recipient}</p>
-                <p className="text-xs font-medium text-slate-500">Coven Balance → Arc</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-ink">@{recipient}</p>
+                <p className="text-xs text-ink-mute">Receives instantly on Arc</p>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setRecipient(null);
+                  setStep("who");
+                }}
+              >
+                Change
+              </Button>
+            </Card>
+
+            <AmountInput value={amount} onChange={setAmount} autoFocus />
+
+            <div className="flex flex-wrap justify-center gap-2">
+              {PRESETS.map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setAmount(String(v))}
+                  className={`amount min-h-9 cursor-pointer rounded-full border px-4 text-sm font-bold transition-[background-color,border-color,color,translate,scale] duration-200 ease-out-soft active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+                    amount === String(v)
+                      ? "border-brand bg-brand text-white"
+                      : "border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink"
+                  }`}
+                >
+                  ${v}
+                </button>
+              ))}
             </div>
-            <div className="border-t border-slate-200/80 pt-3 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Amount</span>
-                <span className="amount font-bold text-slate-900">{formatUSDC(amt)} USDC</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Network Fee</span>
-                <span className="amount text-emerald-600 font-semibold">$0.00 (P2P on Arc)</span>
-              </div>
-              {note && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500 font-medium">Note</span>
-                  <span className="text-slate-900 font-medium">“{note}”</span>
+
+            <Input
+              label="Note (optional)"
+              placeholder="What's it for?"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={100}
+              hint={`${note.length}/100`}
+            />
+
+            <Button fullWidth size="lg" disabled={!amt} onClick={() => setStep("confirm")}>
+              Continue
+            </Button>
+          </div>
+        )}
+
+        {step === "confirm" && recipient && (
+          <div className="animate-fade-up mt-6 space-y-4">
+            <Card className="space-y-4 p-5">
+              <div className="flex items-center gap-3">
+                <Avatar username={recipient} size={48} />
+                <div className="min-w-0">
+                  <p className="truncate text-base font-bold text-ink">@{recipient}</p>
+                  <p className="text-xs text-ink-mute">Coven balance → Arc</p>
                 </div>
-              )}
+              </div>
+
+              <dl className="space-y-2.5 border-t border-line pt-4 text-sm">
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-ink-soft">Amount</dt>
+                  <dd className="amount text-lg font-extrabold text-ink">
+                    {formatUSDC(amt)} <span className="text-xs text-ink-mute">USDC</span>
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-ink-soft">Network fee</dt>
+                  <dd className="amount font-semibold text-pos">$0.00</dd>
+                </div>
+                {note && (
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="shrink-0 text-ink-soft">Note</dt>
+                    <dd className="truncate text-right font-medium text-ink">“{note}”</dd>
+                  </div>
+                )}
+                <div className="flex items-baseline justify-between gap-4 border-t border-line pt-2.5">
+                  <dt className="font-bold text-ink">They receive</dt>
+                  <dd className="amount text-lg font-extrabold text-ink">{formatUSDC(amt)}</dd>
+                </div>
+              </dl>
+            </Card>
+
+            <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-ink-mute">
+              <BoltIcon className="h-3.5 w-3.5" />
+              Settles on Arc in under 500ms
+            </p>
+
+            {error && <Alert>{error}</Alert>}
+
+            <div className="flex gap-2.5">
+              <Button
+                variant="secondary"
+                size="lg"
+                disabled={busy}
+                onClick={() => setStep("amount")}
+              >
+                Back
+              </Button>
+              <Button
+                fullWidth
+                size="lg"
+                icon={<SendIcon className="h-4 w-4" />}
+                loading={busy}
+                onClick={confirm}
+              >
+                {busy ? "Waiting for PIN…" : `Send ${formatUSDC(amt)}`}
+              </Button>
             </div>
-          </Card>
-
-          <p className="text-center text-xs font-semibold text-slate-400">Settles on Arc in &lt;500ms</p>
-
-          <Button className="w-full" onClick={confirm} disabled={busy}>
-            {busy ? "Waiting for PIN approval…" : `Confirm & Send ${formatUSDC(amt)}`}
-          </Button>
-          {error && <p className="text-red-600 text-sm font-medium text-center">{error}</p>}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </AppShell>
   );
 }

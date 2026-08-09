@@ -1,5 +1,6 @@
 "use client";
 
+import { ReactNode } from "react";
 import { Avatar } from "./ui";
 import { formatUSDC, relativeTime } from "@/lib/format";
 import type { ActivityItem } from "@/lib/types";
@@ -12,8 +13,8 @@ import {
   AlertCircleIcon,
   CheckCircleIcon,
   BanknoteIcon,
+  TargetIcon,
 } from "./Icons";
-import { ReactNode } from "react";
 
 export const ACTIVITY_LABELS: Record<ActivityItem["type"], (a: ActivityItem) => string> = {
   payment_sent: (a) => `You sent @${a.actor ? a.actor.username : "someone"}`,
@@ -26,71 +27,94 @@ export const ACTIVITY_LABELS: Record<ActivityItem["type"], (a: ActivityItem) => 
   split_paid: (a) => `@${a.actor?.username ?? "someone"} paid their share`,
   split_complete: () => "Split fully collected",
   offramp_completed: () => "Cash out completed",
-  offramp_failed: () => "Cash out failed — tap to retry",
+  offramp_failed: () => "Cash out failed, tap to retry",
   circle_joined: (a) => `@${a.actor?.username ?? "someone"} added you to a circle`,
   goal_created: (a) => `@${a.actor?.username ?? "someone"} started a savings goal`,
-  goal_target_reached: () => "Savings goal target reached 🎉",
-  goal_withdrawal_requested: (a) => `@${a.actor?.username ?? "someone"} requested to withdraw — needs your approval`,
+  goal_target_reached: () => "Savings goal target reached",
+  goal_withdrawal_requested: (a) =>
+    `@${a.actor?.username ?? "someone"} requested to withdraw, needs your approval`,
   goal_withdrawn: (a) => `@${a.actor?.username ?? "someone"}'s goal was withdrawn`,
 };
 
-export const ACTIVITY_SVG_ICONS: Partial<Record<ActivityItem["type"], ReactNode>> = {
-  payment_sent: <SendIcon className="w-4 h-4 text-slate-700" />,
-  payment_received: <ReceiveIcon className="w-4 h-4 text-emerald-600" />,
-  request_received: <RequestIcon className="w-4 h-4 text-blue-600" />,
-  offramp_completed: <CashoutIcon className="w-4 h-4 text-slate-700" />,
-  offramp_failed: <AlertCircleIcon className="w-4 h-4 text-red-600" />,
-  split_complete: <CheckCircleIcon className="w-4 h-4 text-emerald-600" />,
-  circle_joined: <UserGroupIcon className="w-4 h-4 text-blue-600" />,
-  request_rejected: <AlertCircleIcon className="w-4 h-4 text-slate-400" />,
-  request_declined: <AlertCircleIcon className="w-4 h-4 text-slate-400" />,
-  goal_created: <UserGroupIcon className="w-4 h-4 text-blue-600" />,
-  goal_target_reached: <CheckCircleIcon className="w-4 h-4 text-emerald-600" />,
-  goal_withdrawal_requested: <AlertCircleIcon className="w-4 h-4 text-blue-600" />,
-  goal_withdrawn: <CheckCircleIcon className="w-4 h-4 text-slate-700" />,
+/** Direction of value for the signed-in user: drives sign, colour and icon. */
+const OUTGOING = new Set<ActivityItem["type"]>([
+  "payment_sent",
+  "request_received",
+  "split_created",
+  "offramp_completed",
+  "offramp_failed",
+]);
+
+const NEUTRAL = new Set<ActivityItem["type"]>([
+  "request_rejected",
+  "request_declined",
+  "goal_created",
+  "goal_target_reached",
+  "goal_withdrawal_requested",
+  "goal_withdrawn",
+]);
+
+const ACTIVITY_ICONS: Partial<Record<ActivityItem["type"], ReactNode>> = {
+  payment_sent: <SendIcon className="h-4 w-4" />,
+  payment_received: <ReceiveIcon className="h-4 w-4" />,
+  request_received: <RequestIcon className="h-4 w-4" />,
+  offramp_completed: <CashoutIcon className="h-4 w-4" />,
+  offramp_failed: <AlertCircleIcon className="h-4 w-4" />,
+  split_complete: <CheckCircleIcon className="h-4 w-4" />,
+  circle_joined: <UserGroupIcon className="h-4 w-4" />,
+  request_rejected: <AlertCircleIcon className="h-4 w-4" />,
+  request_declined: <AlertCircleIcon className="h-4 w-4" />,
+  goal_created: <TargetIcon className="h-4 w-4" />,
+  goal_target_reached: <CheckCircleIcon className="h-4 w-4" />,
+  goal_withdrawal_requested: <AlertCircleIcon className="h-4 w-4" />,
+  goal_withdrawn: <TargetIcon className="h-4 w-4" />,
 };
 
-/** Shared row content — icon/avatar, label, note + relative time, amount. */
+const ICON_TONES: Partial<Record<ActivityItem["type"], string>> = {
+  payment_received: "bg-pos-soft text-pos",
+  split_complete: "bg-pos-soft text-pos",
+  goal_target_reached: "bg-pos-soft text-pos",
+  offramp_failed: "bg-neg-soft text-neg",
+  request_received: "bg-accent-soft text-accent",
+  circle_joined: "bg-accent-soft text-accent",
+  goal_withdrawal_requested: "bg-warn-soft text-warn",
+};
+
+/** Shared row: avatar or tinted icon, label, note + time, signed amount. */
 export default function ActivityRow({ item }: { item: ActivityItem }) {
-  const outgoing = new Set<ActivityItem["type"]>([
-    "payment_sent",
-    "request_received",
-    "split_created",
-    "offramp_completed",
-    "offramp_failed",
-  ]).has(item.type);
-
-  const neutral = new Set<ActivityItem["type"]>([
-    "request_rejected",
-    "request_declined",
-    "goal_created",
-    "goal_target_reached",
-    "goal_withdrawal_requested",
-    "goal_withdrawn",
-  ]).has(item.type);
-
-  const customIcon = ACTIVITY_SVG_ICONS[item.type];
+  const outgoing = OUTGOING.has(item.type);
+  const neutral = NEUTRAL.has(item.type);
+  const icon = ACTIVITY_ICONS[item.type];
+  const showIcon = Boolean(icon) || !item.actor;
 
   return (
     <div className="flex items-center gap-3">
-      {customIcon || !item.actor ? (
-        <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-          {customIcon || <BanknoteIcon className="w-4 h-4 text-slate-600" />}
+      {showIcon ? (
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+            ICON_TONES[item.type] ?? "bg-surface-2 text-ink-soft"
+          }`}
+        >
+          {icon ?? <BanknoteIcon className="h-4 w-4" />}
         </div>
       ) : (
-        <Avatar username={item.actor.username} avatarUrl={item.actor.avatar_url} />
+        <Avatar username={item.actor!.username} avatarUrl={item.actor!.avatar_url} />
       )}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-900 truncate">{ACTIVITY_LABELS[item.type](item)}</p>
-        <p className="text-xs text-slate-500 truncate">
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-ink">
+          {ACTIVITY_LABELS[item.type](item)}
+        </p>
+        <p className="truncate text-xs text-ink-mute">
           {item.note ? `“${item.note}” · ` : ""}
           {relativeTime(item.created_at)}
         </p>
       </div>
+
       {item.amount_usdc != null && (
         <p
-          className={`amount text-sm font-bold ${
-            neutral ? "text-slate-400" : outgoing ? "text-slate-900" : "text-emerald-600"
+          className={`amount shrink-0 text-sm font-bold ${
+            neutral ? "text-ink-mute" : outgoing ? "text-ink" : "text-pos"
           }`}
         >
           {neutral ? "" : outgoing ? "−" : "+"}

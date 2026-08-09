@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Spinner } from "@/components/ui";
+import { Spinner, Alert, Button } from "@/components/ui";
+import { CovenMark } from "@/components/Icons";
 import { getSupabaseBrowser } from "@/lib/supabase";
 
 /**
  * Lands here after Google redirects back from Supabase Auth. The Supabase
- * client auto-detects the session from the URL — we just wait for it, then
+ * client auto-detects the session from the URL, so we wait for it, then
  * make sure our own users-table row + Circle wallet exist.
  */
 export default function AuthCallbackPage() {
@@ -24,7 +25,7 @@ export default function AuthCallbackPage() {
       if (cancelled) return;
 
       if (sessionError || !data.session) {
-        setError(sessionError?.message ?? "Sign-in didn't complete — try again.");
+        setError(sessionError?.message ?? "Sign-in didn't complete. Try again.");
         return;
       }
 
@@ -48,22 +49,21 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="mx-auto w-full max-w-md flex-1 flex flex-col items-center justify-center px-6 py-10 gap-4">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-5 bg-canvas px-6 py-10 text-ink">
+      <CovenMark className="h-10 w-10 text-accent" />
+
       {error ? (
-        <>
-          <p className="text-danger text-sm text-center">{error}</p>
-          <button
-            className="text-accent text-sm font-semibold"
-            onClick={() => router.replace("/signup")}
-          >
+        <div className="w-full max-w-sm space-y-4">
+          <Alert>{error}</Alert>
+          <Button variant="secondary" fullWidth onClick={() => router.replace("/signup")}>
             Back to sign in
-          </button>
-        </>
+          </Button>
+        </div>
       ) : (
-        <>
+        <div className="flex items-center gap-2.5 text-sm font-medium text-ink-soft">
           <Spinner />
-          <p className="text-text-2 text-sm">Signing you in…</p>
-        </>
+          Signing you in…
+        </div>
       )}
     </div>
   );

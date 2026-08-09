@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
-import { Button, Card, Input, Spinner } from "@/components/ui";
+import {
+  Button,
+  Card,
+  Input,
+  Select,
+  AmountInput,
+  Alert,
+  Skeleton,
+  SectionHeading,
+} from "@/components/ui";
+import { BanknoteIcon, PlusIcon, CheckCircleIcon } from "@/components/Icons";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC, formatLocal } from "@/lib/format";
@@ -12,8 +22,8 @@ import type { BankAccount } from "@/lib/types";
 export default function CashoutPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [balance, setBalance] = useState<string>("0");
-  const [rate, setRate] = useState<number>(0);
+  const [balance, setBalance] = useState<string | null>(null);
+  const [rate, setRate] = useState(0);
   const [amount, setAmount] = useState("");
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [banks, setBanks] = useState<{ code: string; name: string }[]>([]);
@@ -24,7 +34,8 @@ export default function CashoutPage() {
     accountNumber: "",
     accountName: "",
   });
-  const [busy, setBusy] = useState(false);
+  const [savingBank, setSavingBank] = useState(false);
+  const [cashingOut, setCashingOut] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -50,9 +61,11 @@ export default function CashoutPage() {
   const amt = parseFloat(amount) || 0;
   const fee = amt * 0.01;
   const receiveLocal = (amt - fee) * rate;
+  const available = parseFloat(balance ?? "0");
+  const overBalance = balance !== null && amt > available;
 
   async function addBank() {
-    setBusy(true);
+    setSavingBank(true);
     setError("");
     try {
       const { account } = await api<{ account: BankAccount }>("/api/banks", {
@@ -61,15 +74,16 @@ export default function CashoutPage() {
       setAccounts((a) => [account, ...a]);
       setSelected(account.id);
       setAddingBank(false);
+      setBankForm({ bankCode: "", accountNumber: "", accountName: "" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save bank");
     } finally {
-      setBusy(false);
+      setSavingBank(false);
     }
   }
 
   async function cashOut() {
-    setBusy(true);
+    setCashingOut(true);
     setError("");
     try {
       await api("/api/cashout/initiate", {
@@ -78,138 +92,187 @@ export default function CashoutPage() {
       router.replace("/history");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Cash out failed");
-      setBusy(false);
+      setCashingOut(false);
     }
   }
 
-  if (!user) {
-    return (
-      <AppShell title="Cash Out" back>
-        <div className="flex justify-center py-16">
-          <Spinner />
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
-    <AppShell title="Cash Out to Bank" back>
-      <div className="space-y-5">
-        <div className="flex justify-between items-center bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-2xs">
-          <span className="text-xs font-semibold text-slate-500">Available Balance</span>
-          <span className="amount font-bold text-slate-900 text-sm">{formatUSDC(balance)} USDC</span>
-        </div>
+    <AppShell title="Cash out to bank" back>
+      <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-2 lg:items-start">
+        {/* ------------------------------------------------ Amount + quote */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between rounded-xl border border-line bg-surface px-4 py-3.5 shadow-e1">
+            <span className="text-xs font-semibold text-ink-soft">Available balance</span>
+            {balance !== null ? (
+              <span className="amount text-sm font-bold text-ink">
+                {formatUSDC(balance)} USDC
+              </span>
+            ) : (
+              <Skeleton className="h-4 w-24" />
+            )}
+          </div>
 
-        <Card className="space-y-3">
-          <Input
-            inputMode="decimal"
-            placeholder="Amount in USDC"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-            autoFocus
-          />
-          {amt > 0 && rate > 0 && (
-            <div className="text-sm space-y-1.5 pt-1 border-t border-slate-100">
-              <p className="text-[#0a192f] text-xl font-extrabold amount">
-                ≈ {formatLocal(receiveLocal)} <span className="text-sm font-semibold text-slate-500">NGN</span>
-              </p>
-              <div className="text-xs text-slate-500 space-y-1 font-medium">
-                <div className="flex justify-between">
-                  <span>Exchange Rate</span>
-                  <span className="font-semibold text-slate-700">1 USDC = ₦{rate.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Platform Fee</span>
-                  <span className="font-semibold text-slate-700">{formatUSDC(fee)} (1%)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Estimated Arrival</span>
-                  <span className="font-semibold text-slate-700">1–2 business days</span>
-                </div>
-              </div>
+          <AmountInput value={amount} onChange={setAmount} autoFocus />
+
+          {balance !== null && available > 0 && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => setAmount(String(available))}
+                className="min-h-9 cursor-pointer rounded-full border border-line bg-surface px-4 text-xs font-bold text-ink-soft transition-colors duration-200 hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              >
+                Cash out everything ({formatUSDC(available)})
+              </button>
             </div>
           )}
-        </Card>
 
-        <div className="space-y-2">
-          <p className="font-bold text-slate-900 text-sm">Destination Bank</p>
-          {accounts.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => setSelected(a.id)}
-              className={`w-full text-left rounded-2xl border p-4 transition-all ${
-                selected === a.id
-                  ? "border-[#0a192f] bg-slate-900 text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-900 hover:border-slate-300"
-              }`}
-            >
-              <p className="font-bold text-sm">
-                {a.bank_name} — **** {a.account_last4}
+          {overBalance && (
+            <Alert>
+              That's more than your balance. You can cash out up to{" "}
+              {formatUSDC(available)}.
+            </Alert>
+          )}
+
+          {/* The quote, shown before confirming and never after. */}
+          {amt > 0 && rate > 0 && !overBalance && (
+            <Card className="animate-fade-up space-y-3">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-mute">
+                You receive
               </p>
-              <p className={`text-xs mt-0.5 ${selected === a.id ? "text-slate-300" : "text-slate-500"}`}>
-                {a.account_name}
+              <p className="amount text-3xl font-extrabold tracking-tight text-ink">
+                {formatLocal(receiveLocal)}
+                <span className="ml-1.5 align-middle text-sm font-semibold text-ink-mute">
+                  NGN
+                </span>
               </p>
-            </button>
-          ))}
-          <button
-            onClick={() => setAddingBank((s) => !s)}
-            className="text-xs font-bold text-blue-600 hover:text-blue-700 pt-1"
-          >
-            {addingBank ? "Cancel" : "+ Add new bank account"}
-          </button>
+              <dl className="space-y-2 border-t border-line pt-3 text-xs">
+                {[
+                  ["Exchange rate", `1 USDC = ₦${rate.toLocaleString()}`],
+                  ["Platform fee (1%)", formatUSDC(fee)],
+                  ["Estimated arrival", "1–2 business days"],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-4">
+                    <dt className="text-ink-soft">{k}</dt>
+                    <dd className="font-semibold text-ink">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Card>
+          )}
         </div>
 
-        {addingBank && (
-          <Card className="space-y-3">
-            <select
-              className="w-full rounded-2xl bg-white border border-slate-200 px-4 py-3 text-slate-900 font-medium outline-none focus:border-blue-600"
-              value={bankForm.bankCode}
-              onChange={(e) => setBankForm((f) => ({ ...f, bankCode: e.target.value }))}
-            >
-              <option value="">Select bank</option>
-              {banks.map((b) => (
-                <option key={b.code} value={b.code}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-            <Input
-              inputMode="numeric"
-              placeholder="Account number"
-              value={bankForm.accountNumber}
-              onChange={(e) =>
-                setBankForm((f) => ({ ...f, accountNumber: e.target.value.replace(/\D/g, "") }))
+        {/* --------------------------------------------------- Destination */}
+        <div className="space-y-4">
+          <div>
+            <SectionHeading
+              title="Destination bank"
+              action={
+                accounts.length > 0 ? (
+                  <button
+                    onClick={() => setAddingBank((s) => !s)}
+                    className="inline-flex items-center gap-1 rounded text-xs font-bold text-accent transition-colors hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    {addingBank ? "Cancel" : <>
+                      <PlusIcon className="h-3.5 w-3.5" /> Add
+                    </>}
+                  </button>
+                ) : undefined
               }
             />
-            <Input
-              placeholder="Account name"
-              value={bankForm.accountName}
-              onChange={(e) => setBankForm((f) => ({ ...f, accountName: e.target.value }))}
-            />
-            <Button
-              className="w-full"
-              onClick={addBank}
-              disabled={
-                busy || !bankForm.bankCode || !bankForm.accountNumber || !bankForm.accountName
-              }
-            >
-              {busy ? "Saving…" : "Save bank account"}
-            </Button>
-          </Card>
-        )}
 
-        <Button
-          className="w-full"
-          onClick={cashOut}
-          disabled={busy || !amt || !selected || amt > parseFloat(balance)}
-        >
-          {busy
-            ? "Processing…"
-            : amt && rate
-              ? `Cash Out ${formatLocal(receiveLocal)}`
-              : "Cash Out"}
-        </Button>
-        {error && <p className="text-red-600 text-sm font-medium text-center">{error}</p>}
+            <div className="space-y-2.5">
+              {accounts.map((a) => {
+                const active = selected === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => setSelected(a.id)}
+                    aria-pressed={active}
+                    className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+                      active
+                        ? "border-accent bg-accent-soft shadow-e1"
+                        : "border-line bg-surface hover:border-line-strong"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                        active ? "bg-accent text-white" : "bg-surface-2 text-ink-soft"
+                      }`}
+                    >
+                      <BanknoteIcon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold text-ink">
+                        {a.bank_name}
+                      </span>
+                      <span className="tnum block truncate text-xs text-ink-soft">
+                        ···· {a.account_last4} · {a.account_name}
+                      </span>
+                    </span>
+                    {active && <CheckCircleIcon className="h-5 w-5 shrink-0 text-accent" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {addingBank && (
+            <Card className="animate-fade-up space-y-3.5">
+              <p className="text-sm font-bold text-ink">Add a bank account</p>
+              <Select
+                label="Bank"
+                value={bankForm.bankCode}
+                onChange={(e) => setBankForm((f) => ({ ...f, bankCode: e.target.value }))}
+              >
+                <option value="">Select bank</option>
+                {banks.map((b) => (
+                  <option key={b.code} value={b.code}>
+                    {b.name}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                label="Account number"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="0123456789"
+                value={bankForm.accountNumber}
+                onChange={(e) =>
+                  setBankForm((f) => ({ ...f, accountNumber: e.target.value.replace(/\D/g, "") }))
+                }
+              />
+              <Input
+                label="Account name"
+                placeholder="As it appears on your bank statement"
+                value={bankForm.accountName}
+                onChange={(e) => setBankForm((f) => ({ ...f, accountName: e.target.value }))}
+              />
+              <Button
+                fullWidth
+                onClick={addBank}
+                loading={savingBank}
+                disabled={
+                  !bankForm.bankCode || !bankForm.accountNumber || !bankForm.accountName
+                }
+              >
+                Save bank account
+              </Button>
+            </Card>
+          )}
+
+          {error && <Alert>{error}</Alert>}
+
+          <Button
+            fullWidth
+            size="lg"
+            onClick={cashOut}
+            loading={cashingOut}
+            disabled={!amt || !selected || overBalance}
+          >
+            {amt && rate && !overBalance
+              ? `Cash out ${formatLocal(receiveLocal)}`
+              : "Cash out"}
+          </Button>
+        </div>
       </div>
     </AppShell>
   );

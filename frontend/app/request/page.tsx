@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import UserSearch from "@/components/UserSearch";
-import { Button, Input, Card, Avatar } from "@/components/ui";
-import { MailIcon } from "@/components/Icons";
+import { Button, Input, Card, Avatar, AmountInput, Alert } from "@/components/ui";
+import { MailIcon, RequestIcon } from "@/components/Icons";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC } from "@/lib/format";
@@ -30,7 +30,7 @@ export default function RequestPage() {
         json: { toUsername: payer, amountUsdc: amt, note },
       });
       setSent(true);
-      setTimeout(() => router.replace("/home"), 1500);
+      setTimeout(() => router.replace("/home"), 1800);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {
@@ -40,62 +40,71 @@ export default function RequestPage() {
 
   if (sent) {
     return (
-      <AppShell title="Request" back>
-        <Card className="text-center py-10 space-y-2">
-          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-100">
-            <MailIcon className="w-6 h-6" />
-          </div>
-          <p className="font-bold text-slate-900 text-lg">Request sent to @{payer}</p>
-          <p className="text-slate-500 text-sm max-w-xs mx-auto">
-            They'll get a notification and can pay in one tap.
-          </p>
-        </Card>
+      <AppShell title="Request sent" back>
+        <div className="mx-auto max-w-lg">
+          <Card className="animate-scale-in space-y-3 px-6 py-12 text-center">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent">
+              <MailIcon className="h-6 w-6" />
+            </span>
+            <p className="text-lg font-bold text-ink">
+              Request sent to @{payer}
+            </p>
+            <p className="mx-auto max-w-xs text-sm leading-relaxed text-ink-soft">
+              They'll get a notification and can settle it in one tap. You'll see
+              it land in your activity.
+            </p>
+            <p className="amount pt-2 text-2xl font-extrabold text-ink">{formatUSDC(amt)}</p>
+          </Card>
+        </div>
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="Request Payment" back>
-      {!payer ? (
-        <UserSearch onSelect={(u) => setPayer(u.username)} placeholder="Who owes you?" />
-      ) : (
-        <div className="space-y-5">
-          <Card className="flex items-center gap-3">
-            <Avatar username={payer} />
-            <p className="font-bold text-slate-900">@{payer}</p>
-            <button
-              className="ml-auto text-xs font-semibold text-slate-500 hover:text-slate-900"
-              onClick={() => setPayer(null)}
-            >
-              Change
-            </button>
-          </Card>
-
-          <div className="text-center py-6 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-            <Input
-              inputMode="decimal"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-              className="text-center text-4xl amount border-none bg-transparent focus:ring-0 font-extrabold text-slate-900"
-              autoFocus
-            />
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">USDC</p>
-          </div>
-
-          <Input
-            placeholder="What's it for? — dinner last night"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={100}
+    <AppShell title="Request payment" back>
+      <div className="mx-auto max-w-lg">
+        {!payer ? (
+          <UserSearch
+            label="Who owes you?"
+            placeholder="Search @username or phone"
+            onSelect={(u) => setPayer(u.username)}
           />
+        ) : (
+          <div className="space-y-4">
+            <Card className="flex items-center gap-3 py-3">
+              <Avatar username={payer} />
+              <p className="min-w-0 flex-1 truncate font-bold text-ink">@{payer}</p>
+              <Button variant="ghost" size="sm" onClick={() => setPayer(null)}>
+                Change
+              </Button>
+            </Card>
 
-          <Button className="w-full" onClick={submit} disabled={busy || !amt}>
-            {busy ? "Sending…" : `Request ${formatUSDC(amt)}`}
-          </Button>
-          {error && <p className="text-red-600 text-sm font-medium text-center">{error}</p>}
-        </div>
-      )}
+            <AmountInput value={amount} onChange={setAmount} autoFocus />
+
+            <Input
+              label="What's it for?"
+              placeholder="Dinner last night"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={100}
+              hint="Helps them recognise the request."
+            />
+
+            {error && <Alert>{error}</Alert>}
+
+            <Button
+              fullWidth
+              size="lg"
+              icon={<RequestIcon className="h-4 w-4" />}
+              onClick={submit}
+              loading={busy}
+              disabled={!amt}
+            >
+              {busy ? "Sending…" : `Request ${formatUSDC(amt)}`}
+            </Button>
+          </div>
+        )}
+      </div>
     </AppShell>
   );
 }

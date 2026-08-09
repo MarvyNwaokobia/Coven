@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input, Card } from "@/components/ui";
+import { Button, Input, Card, Alert } from "@/components/ui";
+import Stepper from "@/components/Stepper";
 import WalletSetup from "@/components/WalletSetup";
+import { CovenMark } from "@/components/Icons";
 import { api } from "@/lib/api-client";
 import { validateUsername } from "@/lib/format";
 import { useAuth } from "@/lib/useAuth";
+
+const STEPS = ["Handle", "Wallet"];
 
 /** Username selection, then wallet PIN setup, after first login. */
 export default function OnboardPage() {
@@ -17,8 +21,11 @@ export default function OnboardPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [touched, setTouched] = useState(false);
 
+  // Validate as they type, but only surface it once they've moved on.
   const clientError = username ? validateUsername(username) : null;
+  const showError = touched ? clientError : null;
 
   async function claim() {
     setBusy(true);
@@ -33,54 +40,80 @@ export default function OnboardPage() {
     }
   }
 
-  if (step === "wallet") {
-    return (
-      <div className="mx-auto w-full max-w-md flex-1 flex flex-col justify-center px-6 py-10">
-        <h1 className="text-2xl font-extrabold mb-1">One more step</h1>
-        <p className="text-text-2 text-sm mb-8">
-          Your @{username} is set — now secure your wallet.
-        </p>
-        <WalletSetup onComplete={() => router.replace("/home")} />
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto w-full max-w-md flex-1 flex flex-col justify-center px-6 py-10">
-      <h1 className="text-2xl font-extrabold mb-1">Choose your @username</h1>
-      <p className="text-text-2 text-sm mb-8">
-        It's unique, permanent, and how friends find and pay you.
-      </p>
+    <div className="relative flex min-h-dvh flex-col bg-canvas px-5 py-8 text-ink">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-32 left-1/2 h-80 w-3xl max-w-[130vw] -translate-x-1/2 rounded-full bg-accent/8 blur-3xl"
+      />
 
-      <Card className="space-y-4">
-        <div className="relative">
-          <span className="absolute left-4 top-3 text-text-2">@</span>
-          <Input
-            className="pl-9"
-            placeholder="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value.toLowerCase())}
-            maxLength={20}
-          />
+      <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
+        <CovenMark className="h-9 w-9 text-accent" />
+
+        <div className="mt-6">
+          <Stepper steps={STEPS} current={step === "username" ? 0 : 1} />
         </div>
-        {clientError && <p className="text-warning text-xs">{clientError}</p>}
 
-        <Input
-          placeholder="Display name (optional)"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          maxLength={40}
-        />
+        {step === "username" ? (
+          <div className="animate-fade-up mt-8">
+            <h1 className="text-2xl font-extrabold tracking-tight">Choose your @username</h1>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              It's unique, permanent, and how friends find and pay you. Pick
+              carefully, because you can't change it later.
+            </p>
 
-        <Button
-          className="w-full"
-          onClick={claim}
-          disabled={busy || !username || !!clientError}
-        >
-          {busy ? "Claiming…" : `Claim @${username || "username"}`}
-        </Button>
-        {error && <p className="text-danger text-sm">{error}</p>}
-      </Card>
+            <Card className="mt-6 space-y-4">
+              <Input
+                label="Username"
+                prefix="@"
+                placeholder="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                onBlur={() => setTouched(true)}
+                maxLength={20}
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="off"
+                autoFocus
+                required
+                error={showError ?? undefined}
+                hint="3–20 characters. Letters, numbers and underscores."
+              />
+
+              <Input
+                label="Display name (optional)"
+                placeholder="How your name shows up"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={40}
+              />
+
+              {error && <Alert>{error}</Alert>}
+
+              <Button
+                fullWidth
+                size="lg"
+                onClick={claim}
+                loading={busy}
+                disabled={!username || !!clientError}
+              >
+                Claim @{username || "username"}
+              </Button>
+            </Card>
+          </div>
+        ) : (
+          <div className="animate-fade-up mt-8">
+            <h1 className="text-2xl font-extrabold tracking-tight">One more step</h1>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              <span className="font-bold text-ink">@{username}</span> is yours.
+              Now secure the wallet behind it.
+            </p>
+            <div className="mt-6">
+              <WalletSetup onComplete={() => router.replace("/home")} />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

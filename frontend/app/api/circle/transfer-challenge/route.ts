@@ -14,7 +14,7 @@ type ChallengeRequest =
  * the userToken/encryptionKey/challengeId the client needs to run the PIN
  * widget; Circle does not move funds until that challenge is approved.
  *
- * Recipient + amount are resolved here, server-side — for "request" and
+ * Recipient + amount are resolved here, server-side - for "request" and
  * "split" the amount is always read from our own DB state, never trusted
  * from the client, so a tampered client request can't move more than what's
  * actually owed.

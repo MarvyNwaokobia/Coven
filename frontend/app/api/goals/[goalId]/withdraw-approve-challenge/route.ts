@@ -3,7 +3,7 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { createContractExecutionChallenge, getCircleUserToken } from "@/lib/circle/wallets";
 import { getGoalForMember, goalPoolAddress } from "@/lib/server/goals";
 
-/** POST /api/goals/[goalId]/withdraw-approve-challenge — approve the goal's current pending withdrawal. */
+/** POST /api/goals/[goalId]/withdraw-approve-challenge - approve the goal's current pending withdrawal. */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ goalId: string }> }

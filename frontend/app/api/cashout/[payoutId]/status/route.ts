@@ -3,7 +3,7 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { getPayoutStatus } from "@/lib/yellowcard/offramp";
 import { recordActivity } from "@/lib/server/activity";
 
-/** GET /api/cashout/[payoutId]/status — poll Yellow Card and sync our record. */
+/** GET /api/cashout/[payoutId]/status - poll Yellow Card and sync our record. */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ payoutId: string }> }
@@ -23,7 +23,7 @@ export async function GET(
 
   if (!payout) return NextResponse.json({ error: "Payout not found" }, { status: 404 });
 
-  // Terminal states — nothing to poll
+  // Terminal states - nothing to poll
   if (payout.status === "completed" || payout.status === "failed" || !payout.yellow_card_payout_id) {
     return NextResponse.json({ payout });
   }
@@ -53,6 +53,6 @@ export async function GET(
     }
     return NextResponse.json({ payout: { ...payout, status, tracking_ref: trackingRef } });
   } catch {
-    return NextResponse.json({ payout }); // Yellow Card unreachable — return last known
+    return NextResponse.json({ payout }); // Yellow Card unreachable - return last known
   }
 }

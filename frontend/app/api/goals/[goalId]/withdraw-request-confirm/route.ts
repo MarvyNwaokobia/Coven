@@ -10,9 +10,9 @@ const WITHDRAWAL_EXECUTED_EVENT =
   "event WithdrawalExecuted(uint256 indexed withdrawalId, bytes32 indexed goalId, address recipient, uint256 amount)";
 
 /**
- * POST /api/goals/[goalId]/withdraw-request-confirm — body: { recipientUsername }
+ * POST /api/goals/[goalId]/withdraw-request-confirm - body: { recipientUsername }
  * A single-member goal (or any goal where the requester is the only
- * member) auto-executes on-chain in the same transaction — this checks
+ * member) auto-executes on-chain in the same transaction - this checks
  * for both WithdrawalRequested and WithdrawalExecuted in the receipt.
  */
 export async function POST(
@@ -46,7 +46,7 @@ export async function POST(
       contractAddress: goalPoolAddress(),
     });
     if (!txHash) {
-      return NextResponse.json({ error: "Transaction has no hash yet — try again shortly" }, { status: 502 });
+      return NextResponse.json({ error: "Transaction has no hash yet - try again shortly" }, { status: 502 });
     }
 
     const requested = await parseEventFromTx<{ withdrawalId: bigint }>(

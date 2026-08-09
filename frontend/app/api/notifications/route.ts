@@ -3,7 +3,7 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { toNotification } from "@/lib/server/notifications";
 
 /**
- * GET /api/notifications — the activity feed, adapted to {title, body}
+ * GET /api/notifications - the activity feed, adapted to {title, body}
  * for the notifications page. Most activity types' actor_id already is
  * the counterparty; payment_sent is the exception (actor_id is the
  * sender themselves), so its real recipient is resolved via the linked

@@ -12,7 +12,7 @@ export type TransferChallengeRequest =
 /**
  * Requests a transfer challenge from the backend, then runs it through the
  * Circle Web SDK's PIN widget. Resolves once the user has approved the
- * transfer — the caller should then call whichever route actually records
+ * transfer - the caller should then call whichever route actually records
  * the payment (that route independently re-verifies the transfer settled).
  */
 export async function approveTransfer(req: TransferChallengeRequest): Promise<void> {

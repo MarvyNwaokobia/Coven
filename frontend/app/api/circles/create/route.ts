@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { recordActivity } from "@/lib/server/activity";
 
-/** POST /api/circles/create — body: { name, emoji?, memberUsernames?: string[] } */
+/** POST /api/circles/create - body: { name, emoji?, memberUsernames?: string[] } */
 export async function POST(req: Request) {
   const creator = await getAuthedUser(req);
   if (!creator) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -51,4 +51,4 @@ export async function POST(req: Request) {
   return NextResponse.json({ circle });
 }
 
-/** GET /api/circles/create is not a thing — list lives at /api/circles */
+/** GET /api/circles/create is not a thing - list lives at /api/circles */

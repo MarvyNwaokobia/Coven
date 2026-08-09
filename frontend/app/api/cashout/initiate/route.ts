@@ -5,7 +5,7 @@ import { initiateOfframp, getExchangeRate, BankDetails } from "@/lib/yellowcard/
 import { recordActivity } from "@/lib/server/activity";
 
 /**
- * POST /api/cashout/initiate — body: { amountUsdc, bankAccountId }
+ * POST /api/cashout/initiate - body: { amountUsdc, bankAccountId }
  * 1% platform fee, then Yellow Card payout with the net amount.
  */
 export async function POST(req: Request) {
@@ -83,11 +83,11 @@ export async function POST(req: Request) {
         amount_usdc: amount,
       },
     ]);
-    return NextResponse.json({ error: "Cash out failed — try again" }, { status: 502 });
+    return NextResponse.json({ error: "Cash out failed - try again" }, { status: 502 });
   }
 }
 
-/** GET /api/cashout/initiate?currency=NGN — live rate preview. */
+/** GET /api/cashout/initiate?currency=NGN - live rate preview. */
 export async function GET(req: Request) {
   const currency = new URL(req.url).searchParams.get("currency") ?? "NGN";
   const { rate, fee } = await getExchangeRate(currency);

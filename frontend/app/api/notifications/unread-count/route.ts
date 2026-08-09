@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 
-/** GET /api/notifications/unread-count — lightweight count for the bell badge. */
+/** GET /api/notifications/unread-count - lightweight count for the bell badge. */
 export async function GET(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

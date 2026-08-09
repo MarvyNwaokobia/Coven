@@ -5,7 +5,7 @@ type ActivityRow = ActivityItem & { actor?: { username: string } | null };
 
 /**
  * Turns a raw activity row into a {title, body} notification. Most types'
- * actor_id already IS the counterparty — the one exception is
+ * actor_id already IS the counterparty - the one exception is
  * payment_sent, whose actor_id is the sender themselves (self), so the
  * caller resolves the real recipient separately and passes it in.
  */
@@ -24,7 +24,7 @@ export function toNotification(a: ActivityRow, counterpartyUsername?: string | n
     },
     request_received: {
       title: "Payment requested",
-      body: `@${who ?? "Someone"} is requesting ${amount ?? "a payment"}${a.note ? ` — “${a.note}”` : ""}`,
+      body: `@${who ?? "Someone"} is requesting ${amount ?? "a payment"}${a.note ? ` - “${a.note}”` : ""}`,
     },
     request_paid: {
       title: "Request paid",
@@ -40,7 +40,7 @@ export function toNotification(a: ActivityRow, counterpartyUsername?: string | n
     },
     split_created: {
       title: "New bill split",
-      body: `@${who ?? "Someone"} created a split${amount ? ` — your share is ${amount}` : ""}`,
+      body: `@${who ?? "Someone"} created a split${amount ? ` - your share is ${amount}` : ""}`,
     },
     split_paid: {
       title: "Split payment",
@@ -48,7 +48,7 @@ export function toNotification(a: ActivityRow, counterpartyUsername?: string | n
     },
     split_complete: {
       title: "Split complete",
-      body: `A bill split was fully collected${amount ? ` — ${amount} total` : ""}`,
+      body: `A bill split was fully collected${amount ? ` - ${amount} total` : ""}`,
     },
     offramp_completed: {
       title: "Cash out completed",
@@ -56,7 +56,7 @@ export function toNotification(a: ActivityRow, counterpartyUsername?: string | n
     },
     offramp_failed: {
       title: "Cash out failed",
-      body: "Your cash out failed — tap to retry",
+      body: "Your cash out failed - tap to retry",
     },
     circle_joined: {
       title: "Added to a circle",
@@ -64,7 +64,7 @@ export function toNotification(a: ActivityRow, counterpartyUsername?: string | n
     },
     goal_created: {
       title: "New savings goal",
-      body: `@${who ?? "Someone"} started a savings goal${a.note ? ` — “${a.note}”` : ""}`,
+      body: `@${who ?? "Someone"} started a savings goal${a.note ? ` - “${a.note}”` : ""}`,
     },
     goal_target_reached: {
       title: "Goal target reached 🎉",
@@ -72,7 +72,7 @@ export function toNotification(a: ActivityRow, counterpartyUsername?: string | n
     },
     goal_withdrawal_requested: {
       title: "Withdrawal needs your approval",
-      body: `@${who ?? "Someone"} requested to withdraw${amount ? ` ${amount}` : ""} — approve to release it`,
+      body: `@${who ?? "Someone"} requested to withdraw${amount ? ` ${amount}` : ""} - approve to release it`,
     },
     goal_withdrawn: {
       title: "Goal withdrawn",

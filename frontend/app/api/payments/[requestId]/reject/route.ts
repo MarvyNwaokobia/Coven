@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { recordActivity } from "@/lib/server/activity";
 
-/** POST /api/payments/[requestId]/reject — decline a pending request. */
+/** POST /api/payments/[requestId]/reject - decline a pending request. */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ requestId: string }> }
@@ -48,7 +48,7 @@ export async function POST(
       note: request.note,
     },
     {
-      // Confirms the decline in the rejecter's own feed — actor is the
+      // Confirms the decline in the rejecter's own feed - actor is the
       // requester here, so the label reads "You declined @requester's request".
       user_id: payer.id,
       type: "request_declined",

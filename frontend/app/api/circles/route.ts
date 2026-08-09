@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 
-/** GET /api/circles — circles the authed user belongs to. */
+/** GET /api/circles - circles the authed user belongs to. */
 export async function GET(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

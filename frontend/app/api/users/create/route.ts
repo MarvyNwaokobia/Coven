@@ -3,7 +3,7 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { validateUsername } from "@/lib/format";
 
 /**
- * POST /api/users/create — body: { username, displayName? }
+ * POST /api/users/create - body: { username, displayName? }
  * Claims a @username for the authenticated user (onboarding step).
  */
 export async function POST(req: Request) {
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (taken) return NextResponse.json({ error: "Username is taken" }, { status: 409 });
 
-  // Wallet setup is a separate PIN-challenge step (see /api/circle/init) —
+  // Wallet setup is a separate PIN-challenge step (see /api/circle/init) -
   // not something we can provision inline here.
   const { data: updated, error } = await admin
     .from("users")
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error) {
-    // 23505 = unique_violation — the pre-check above missed a same-instant
+    // 23505 = unique_violation - the pre-check above missed a same-instant
     // race between two people claiming the same username; the DB constraint
     // is the real guarantee, this just keeps the error message clean.
     if (error.code === "23505") {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 
-/** GET /api/users/search?q=alice — search by @username, display name, or phone. */
+/** GET /api/users/search?q=alice - search by @username, display name, or phone. */
 export async function GET(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

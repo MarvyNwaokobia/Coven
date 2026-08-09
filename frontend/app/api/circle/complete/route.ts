@@ -3,7 +3,7 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { getCircleUserToken, listUserWalletsWithRetry } from "@/lib/circle/wallets";
 
 /**
- * POST /api/circle/complete — called after the client's PIN-setup challenge
+ * POST /api/circle/complete - called after the client's PIN-setup challenge
  * (from /api/circle/init) succeeds. Fetches the now-provisioned wallet and
  * persists it on the user's profile.
  */
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     if (!wallet) {
       return NextResponse.json(
-        { error: "Wallet not indexed yet — try again in a few seconds" },
+        { error: "Wallet not indexed yet - try again in a few seconds" },
         { status: 502 }
       );
     }

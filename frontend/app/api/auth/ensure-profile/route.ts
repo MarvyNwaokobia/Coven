@@ -4,11 +4,11 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 const PLACEHOLDER_USERNAME_PREFIX = "user_";
 
 /**
- * POST /api/auth/ensure-profile — called client-side right after Google
+ * POST /api/auth/ensure-profile - called client-side right after Google
  * sign-in completes. Supabase Auth already created the auth.users row; this
  * creates our public.users profile row on first login (username claim and
- * Circle wallet setup are separate onboarding steps — see /api/users/create
- * and /api/circle/init). Idempotent — safe to call on every sign-in.
+ * Circle wallet setup are separate onboarding steps - see /api/users/create
+ * and /api/circle/init). Idempotent - safe to call on every sign-in.
  */
 export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");

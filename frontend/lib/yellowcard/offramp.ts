@@ -1,5 +1,5 @@
 /**
- * Yellow Card offramp — USDC → local currency bank transfers across Africa.
+ * Yellow Card offramp - USDC → local currency bank transfers across Africa.
  * Server-side only.
  */
 

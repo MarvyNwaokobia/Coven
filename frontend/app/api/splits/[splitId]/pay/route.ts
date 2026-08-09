@@ -4,10 +4,10 @@ import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { recordActivity } from "@/lib/server/activity";
 
 /**
- * POST /api/splits/[splitId]/pay — member pays their share to the creator.
+ * POST /api/splits/[splitId]/pay - member pays their share to the creator.
  * The client must have already run a PIN challenge via
  * /api/circle/transfer-challenge ({ kind: "split", splitId }) before
- * calling this — we verify the resulting transaction settled first.
+ * calling this - we verify the resulting transaction settled first.
  */
 export async function POST(
   req: Request,

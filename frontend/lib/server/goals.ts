@@ -45,7 +45,7 @@ export async function parseEventFromTx<T extends Record<string, unknown>>(
       const parsed = iface.parseLog(log);
       if (parsed?.name === eventName) return parsed.args.toObject() as T;
     } catch {
-      // not this event — keep scanning
+      // not this event - keep scanning
     }
   }
   return null;

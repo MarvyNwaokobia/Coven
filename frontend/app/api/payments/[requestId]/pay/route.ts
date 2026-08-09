@@ -4,10 +4,10 @@ import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { recordActivity } from "@/lib/server/activity";
 
 /**
- * POST /api/payments/[requestId]/pay — one-tap pay on a pending request.
+ * POST /api/payments/[requestId]/pay - one-tap pay on a pending request.
  * The client must have already run a PIN challenge via
  * /api/circle/transfer-challenge ({ kind: "request", requestId }) before
- * calling this — we verify the resulting transaction settled first.
+ * calling this - we verify the resulting transaction settled first.
  */
 export async function POST(
   req: Request,

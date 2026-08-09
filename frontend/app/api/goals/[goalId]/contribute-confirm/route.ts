@@ -8,7 +8,7 @@ import { recordActivity } from "@/lib/server/activity";
  * POST /api/goals/[goalId]/contribute-confirm
  * body: { amountUsdc, step: "approve" | "contribute" }
  * Call after the client approves the PIN challenge from contribute-challenge.
- * An "approve" step just confirms the allowance transaction settled — the
+ * An "approve" step just confirms the allowance transaction settled - the
  * client should immediately call contribute-challenge again to get the
  * real contribute() challenge. A "contribute" step records the contribution.
  */

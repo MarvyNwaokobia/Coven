@@ -3,7 +3,7 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { encrypt, last4 } from "@/lib/crypto";
 import { NIGERIAN_BANKS } from "@/lib/yellowcard/offramp";
 
-/** GET /api/banks — the user's saved bank accounts (numbers redacted). */
+/** GET /api/banks - the user's saved bank accounts (numbers redacted). */
 export async function GET(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

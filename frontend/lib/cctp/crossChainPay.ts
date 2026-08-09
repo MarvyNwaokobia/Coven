@@ -3,7 +3,7 @@
  *
  * Client side: initiateXChainPayment burns USDC on the source chain using
  * the SDK's state machine (approve + depositForBurn), then hands off as
- * soon as the burn confirms — it does NOT wait for the SDK to also relay,
+ * soon as the burn confirms - it does NOT wait for the SDK to also relay,
  * since that would require the relayer's private key in the browser.
  *
  * Server side: relayToArc polls Circle's attestation service for the
@@ -45,7 +45,7 @@ const RPC_URLS: Record<SourceChain | "arc", string> = {
 };
 
 /**
- * The SDK looks its `rpcs` map up by `chainConfig.name.toLowerCase()` — the
+ * The SDK looks its `rpcs` map up by `chainConfig.name.toLowerCase()` - the
  * display name ("ethereum sepolia"), not the `SupportedChain` key
  * ("ethereum") its own type advertises. We register both spellings so the
  * lookup resolves either way, and keeps working if the SDK fixes the key.
@@ -73,7 +73,7 @@ function getCctpClient(): CctpClient {
 
 /**
  * Burn USDC on the source chain via CCTP. Resolves as soon as the burn
- * transaction confirms — the SDK's own state machine keeps running in the
+ * transaction confirms - the SDK's own state machine keeps running in the
  * background attempting to reach the relay step, but without a destination
  * wallet client that leg fails harmlessly; the real relay happens via
  * relayToArc() server-side.
@@ -102,7 +102,7 @@ export async function initiateXChainPayment(params: {
     const onError = () => {
       // Errors that land before we've captured a burn tx hash are real
       // failures (e.g. approval rejected). Errors afterward are the SDK's
-      // own relay attempt failing without a destination wallet — expected
+      // own relay attempt failing without a destination wallet - expected
       // and harmless since our backend takes over from here.
       if (!transfer.currentSnapshot.sourceTxHash) {
         cleanup();
@@ -151,7 +151,7 @@ export async function relayToArc(params: {
   return receipt.hash;
 }
 
-/** Fee + time estimate for a cross-chain send — for display before confirming. */
+/** Fee + time estimate for a cross-chain send - for display before confirming. */
 export async function estimateCrossChainFee(params: {
   sourceChain: SourceChain;
   amountUsdc: bigint;

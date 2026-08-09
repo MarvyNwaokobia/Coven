@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 
-/** GET /api/circles/[id] — circle detail: members, active splits, recent payments. */
+/** GET /api/circles/[id] - circle detail: members, active splits, recent payments. */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }

@@ -10,7 +10,7 @@ const WITHDRAWAL_EXECUTED_EVENT =
 /**
  * POST /api/goals/[goalId]/withdraw-approve-confirm
  * If this was the final approval needed, the contract auto-executes the
- * withdrawal in the same transaction — this checks for WithdrawalExecuted
+ * withdrawal in the same transaction - this checks for WithdrawalExecuted
  * in the receipt and finalizes everything if present.
  */
 export async function POST(

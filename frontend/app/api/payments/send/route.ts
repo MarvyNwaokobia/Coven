@@ -8,7 +8,7 @@ import { creditPayment } from "@/lib/server/payments";
  * body: { toUsername, amountUsdc, note?, sourceChain? }
  *
  * On Arc: the client must have already run a PIN challenge via
- * /api/circle/transfer-challenge ({ kind: "send" }) before calling this —
+ * /api/circle/transfer-challenge ({ kind: "send" }) before calling this -
  * we verify the resulting Circle transaction actually settled before
  * recording anything.
  * Cross-chain: the client burns via CCTP first, then calls /api/cctp/relay;
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     }
   } else {
     // Cross-chain: nothing has landed on Arc yet. The row stays pending with
-    // no tx_hash — /api/cctp/relay fills in the Arc mint hash it gets back
+    // no tx_hash - /api/cctp/relay fills in the Arc mint hash it gets back
     // from its own receiveMessage call, and only then are totals and
     // activity recorded. We deliberately don't take a hash from the client
     // here: an unverified one would be recorded as settlement for a payment

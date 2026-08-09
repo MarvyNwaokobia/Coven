@@ -6,7 +6,7 @@ import { getGoalForMember, goalPoolAddress, usdcBaseUnits } from "@/lib/server/g
 const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 /**
- * POST /api/goals/[goalId]/contribute-challenge — body: { amountUsdc }
+ * POST /api/goals/[goalId]/contribute-challenge - body: { amountUsdc }
  * Contributions call the GoalPool contract directly (funds must sit in
  * escrow, not a wallet anyone can unilaterally drain), so this is a
  * two-step contract-execution flow: an approve() first if allowance is

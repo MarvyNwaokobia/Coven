@@ -4,7 +4,7 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 const MAX_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
-/** POST /api/profile/avatar — multipart form-data with a "file" field. */
+/** POST /api/profile/avatar - multipart form-data with a "file" field. */
 export async function POST(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

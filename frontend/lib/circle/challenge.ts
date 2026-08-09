@@ -22,7 +22,7 @@ export function runChallenge(creds: ChallengeCredentials): Promise<void> {
     sdk.execute(creds.challengeId, (error) => {
       if (error) {
         // The SDK's callback type says Error, but in practice can pass a
-        // plain {code, message} object — normalize so callers always get
+        // plain {code, message} object - normalize so callers always get
         // a real Error with a usable message instead of a silent fallback.
         reject(error instanceof Error ? error : new Error(String((error as { message?: string })?.message ?? error)));
       } else {

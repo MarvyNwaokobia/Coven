@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { ActivityType } from "@/lib/types";
 
-/** Insert an activity feed item (denormalized — one row per affected user). */
+/** Insert an activity feed item (denormalized - one row per affected user). */
 export async function recordActivity(items: {
   user_id: string;
   type: ActivityType;

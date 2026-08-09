@@ -9,7 +9,7 @@ import { recordActivity } from "@/lib/server/activity";
  * Sends USDC to one circle member. Each transfer needs its own PIN
  * challenge, so "send to all" is a client-side loop calling
  * /api/circle/transfer-challenge ({ kind: "circle-member" }) then this
- * route once per member — this route only verifies and records a single
+ * route once per member - this route only verifies and records a single
  * already-approved transfer.
  */
 export async function POST(

@@ -14,7 +14,7 @@ const SETTLED_STATES = new Set(["COMPLETE", "CONFIRMED"]);
 
 /**
  * Backfills any inbound Circle transfers to this user's wallet that we
- * don't already have a payments row for (matched by tx_hash) — covers
+ * don't already have a payments row for (matched by tx_hash) - covers
  * external deposits (faucet, another wallet) that never went through our
  * own send/request/split/cashout routes. Payments already recorded by our
  * own flows are skipped automatically since their tx_hash already exists.

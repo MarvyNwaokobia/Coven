@@ -7,7 +7,7 @@ const SOURCE_CHAINS: SourceChain[] = ["ethereum", "base", "polygon", "arbitrum"]
 const TX_HASH = /^0x[0-9a-fA-F]{64}$/;
 
 /**
- * POST /api/cctp/relay — body: { sourceTxHash, sourceChain, paymentId }
+ * POST /api/cctp/relay - body: { sourceTxHash, sourceChain, paymentId }
  * Internal: after a client-side CCTP burn, polls Circle's attestation
  * service and relays the signed message to Arc, then marks the pending
  * payment completed.

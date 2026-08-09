@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { syncInboundTransfers } from "@/lib/server/inbound-sync";
 
-/** GET /api/history?page=1 — full payment history (sent + received). */
+/** GET /api/history?page=1 - full payment history (sent + received). */
 export async function GET(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

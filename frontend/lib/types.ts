@@ -127,7 +127,7 @@ export interface BankAccount {
   currency: string;
   is_default: boolean;
   created_at: string;
-  /** Last 4 digits only — full number never leaves the server */
+  /** Last 4 digits only - full number never leaves the server */
   account_last4?: string;
 }
 

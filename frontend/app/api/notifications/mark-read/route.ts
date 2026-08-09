@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 
-/** POST /api/notifications/mark-read — marks all of the authed user's unread activity as read. */
+/** POST /api/notifications/mark-read - marks all of the authed user's unread activity as read. */
 export async function POST(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -13,7 +13,7 @@ export function getSupabaseBrowser(): SupabaseClient {
   return browserClient;
 }
 
-/** Server-side admin client (service role — bypasses RLS). Never import in client code. */
+/** Server-side admin client (service role - bypasses RLS). Never import in client code. */
 export function getSupabaseAdmin(): SupabaseClient {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

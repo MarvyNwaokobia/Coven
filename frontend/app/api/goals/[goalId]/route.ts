@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { getGoalForMember } from "@/lib/server/goals";
 
-/** GET /api/goals/[goalId] — goal detail: members, contributions, active withdrawal + approvals. */
+/** GET /api/goals/[goalId] - goal detail: members, contributions, active withdrawal + approvals. */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ goalId: string }> }

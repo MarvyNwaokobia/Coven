@@ -2,7 +2,7 @@
 
 import { getSupabaseBrowser } from "./supabase";
 
-/** Fetch wrapper for our API routes — attaches the Supabase access token. */
+/** Fetch wrapper for our API routes - attaches the Supabase access token. */
 export async function api<T = unknown>(
   path: string,
   init?: RequestInit & { json?: unknown }

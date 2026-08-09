@@ -3,7 +3,7 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { recordActivity } from "@/lib/server/activity";
 
 /**
- * POST /api/payments/request — body: { toUsername, amountUsdc, note? }
+ * POST /api/payments/request - body: { toUsername, amountUsdc, note? }
  * Creates a payment request (requester = authed user, payer = toUsername).
  */
 export async function POST(req: Request) {
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   return NextResponse.json({ request });
 }
 
-/** GET /api/payments/request — pending requests addressed to the authed user. */
+/** GET /api/payments/request - pending requests addressed to the authed user. */
 export async function GET(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

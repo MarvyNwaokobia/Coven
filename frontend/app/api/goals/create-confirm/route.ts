@@ -7,7 +7,7 @@ import { recordActivity } from "@/lib/server/activity";
 /**
  * POST /api/goals/create-confirm
  * body: { circleId, memberUsernames: string[], targetAmountUsdc, description }
- * Call after the client approves the PIN challenge from create-challenge —
+ * Call after the client approves the PIN challenge from create-challenge -
  * verifies the createGoal transaction settled, reads the real on-chain
  * goalId out of the GoalCreated event, and persists the goal.
  */
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       contractAddress: goalPoolAddress(),
     });
     if (!txHash) {
-      return NextResponse.json({ error: "Transaction has no hash yet — try again shortly" }, { status: 502 });
+      return NextResponse.json({ error: "Transaction has no hash yet - try again shortly" }, { status: 502 });
     }
 
     const event = await parseEventFromTx<{ goalId: string }>(

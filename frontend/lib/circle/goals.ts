@@ -3,7 +3,7 @@
 import { api } from "@/lib/api-client";
 import { runChallenge, type ChallengeCredentials } from "./challenge";
 
-/** Create a savings goal — one PIN challenge (createGoal on-chain). */
+/** Create a savings goal - one PIN challenge (createGoal on-chain). */
 export async function createGoal(params: {
   circleId: string;
   memberUsernames: string[];
@@ -17,7 +17,7 @@ export async function createGoal(params: {
 
 /**
  * Contribute to a goal. First-time contributors need an approve() challenge
- * before the actual contribute() challenge — this loops through both
+ * before the actual contribute() challenge - this loops through both
  * automatically so the caller just sees one call.
  */
 export async function contributeToGoal(goalId: string, amountUsdc: number): Promise<void> {
@@ -31,7 +31,7 @@ export async function contributeToGoal(goalId: string, amountUsdc: number): Prom
       json: { amountUsdc, step: creds.step },
     });
     if (creds.step === "contribute" || result.approved !== true) return;
-    // step was "approve" — loop once more to get the real contribute challenge
+    // step was "approve" - loop once more to get the real contribute challenge
   }
 }
 

@@ -4,9 +4,9 @@ import { createContractExecutionChallenge, getCircleUserToken } from "@/lib/circ
 import { getGoalForMember, goalPoolAddress } from "@/lib/server/goals";
 
 /**
- * POST /api/goals/[goalId]/withdraw-request-challenge — body: { recipientUsername }
+ * POST /api/goals/[goalId]/withdraw-request-challenge - body: { recipientUsername }
  * Requests to withdraw the FULL pooled balance to a recipient. Only one
- * request may be pending per goal — every other member must approve
+ * request may be pending per goal - every other member must approve
  * before funds move (see withdraw-approve-*).
  */
 export async function POST(

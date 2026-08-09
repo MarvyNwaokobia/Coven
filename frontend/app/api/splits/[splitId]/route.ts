@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 
-/** GET /api/splits/[splitId] — split detail + member payment status. */
+/** GET /api/splits/[splitId] - split detail + member payment status. */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ splitId: string }> }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 
 /**
- * POST /api/activity/read — body: { ids?: string[] } or { all: true }
+ * POST /api/activity/read - body: { ids?: string[] } or { all: true }
  * Marks activity items as read for the authed user.
  */
 export async function POST(req: Request) {

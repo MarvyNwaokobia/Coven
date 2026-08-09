@@ -2,7 +2,7 @@
  * Circle Programmable Wallets integration (server-side only).
  *
  * User-Controlled Wallets require a client-side PIN challenge for both
- * wallet creation and every transfer — the backend only ever prepares a
+ * wallet creation and every transfer - the backend only ever prepares a
  * challenge (or verifies one that already completed); it never moves funds
  * or sets up a wallet unilaterally. The actual challenge execution happens
  * in the browser via @circle-fin/w3s-pw-web-sdk.
@@ -44,7 +44,7 @@ async function circleFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return json.data as T;
 }
 
-/** Register the user with Circle. Idempotent — "already exists" is not an error. */
+/** Register the user with Circle. Idempotent - "already exists" is not an error. */
 export async function createCircleUser(userId: string): Promise<void> {
   try {
     await circleFetch(`/users`, { method: "POST", body: JSON.stringify({ userId }) });
@@ -63,7 +63,7 @@ export async function getCircleUserToken(
 
 /**
  * Start wallet creation. Returns a challengeId the client must complete via
- * the Web SDK (the user sets their PIN there) — or alreadyInitialized if
+ * the Web SDK (the user sets their PIN there) - or alreadyInitialized if
  * this user has already been through that step.
  */
 export async function initializeUserWallet(
@@ -98,7 +98,7 @@ export async function listUserWallets(
 }
 
 /**
- * Same as listUserWallets, but retries a few times with a short delay —
+ * Same as listUserWallets, but retries a few times with a short delay -
  * a wallet a PIN challenge just created can take a moment to be indexed
  * and show up in this list, so calling listUserWallets once right after
  * the challenge completes can spuriously return an empty array.
@@ -130,7 +130,7 @@ export async function getUSDCBalance(walletId: string, userToken: string): Promi
 }
 
 /**
- * Start a USDC transfer. Returns a challengeId — Circle does not move any
+ * Start a USDC transfer. Returns a challengeId - Circle does not move any
  * funds until the user approves with their PIN via the Web SDK.
  */
 export async function createTransferChallenge(params: {
@@ -147,7 +147,7 @@ export async function createTransferChallenge(params: {
       walletId: params.walletId,
       destinationAddress: params.destinationAddress,
       // Arc has two USDC representations (native 18-decimal gas token vs
-      // ERC20 6-decimal token at the same logical asset) — Circle needs the
+      // ERC20 6-decimal token at the same logical asset) - Circle needs the
       // catalog tokenId to disambiguate, not a raw tokenAddress.
       tokenId: process.env.ARC_USDC_TOKEN_ID,
       amounts: [params.amountUsdc],
@@ -162,10 +162,10 @@ const FAILED_STATES = new Set(["FAILED", "DENIED", "CANCELLED"]);
 /**
  * Fetch a transaction by id and verify it actually matches what we expect
  * before trusting a client's claim that a PIN-approved transfer completed.
- * Never record a payment based on client input alone — a client could
+ * Never record a payment based on client input alone - a client could
  * otherwise fabricate a transaction id and claim an unpaid transfer as done.
  *
- * Retries the "still pending" case a few times with a short delay — a
+ * Retries the "still pending" case a few times with a short delay - a
  * transaction can sit in SENT (submitted, not yet confirmed) for a moment
  * right after the PIN challenge completes, even with Arc's fast finality,
  * since confirmation still has to propagate through Circle's own indexing.
@@ -218,12 +218,12 @@ export async function verifyCompletedTransfer(params: {
     if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
   }
 
-  throw new Error("Transaction is taking longer than usual to settle — check History shortly");
+  throw new Error("Transaction is taking longer than usual to settle - check History shortly");
 }
 
 /**
  * Circle's transfer-challenge endpoint returns only a challengeId, not a
- * transaction id — so after a challenge completes we locate the resulting
+ * transaction id - so after a challenge completes we locate the resulting
  * transaction ourselves: most recent transfer from this wallet to this
  * destination for this amount, created in the last few minutes.
  */
@@ -257,7 +257,7 @@ export async function findRecentTransaction(params: {
  * Full post-challenge verification: mint a fresh session token, find the
  * transaction the just-approved challenge produced, and confirm it settled
  * with the expected wallet/destination/amount. Throws if no matching,
- * settled transaction is found — callers should not record a payment
+ * settled transaction is found - callers should not record a payment
  * unless this resolves.
  */
 export async function resolveAndVerifyRecentTransfer(params: {
@@ -269,7 +269,7 @@ export async function resolveAndVerifyRecentTransfer(params: {
   const { userToken } = await getCircleUserToken(params.userId);
 
   // The transaction can take a moment to appear in this list right after
-  // the PIN challenge completes — same indexing lag as wallet creation.
+  // the PIN challenge completes - same indexing lag as wallet creation.
   let found: { id: string } | null = null;
   for (let i = 0; i < 5 && !found; i++) {
     found = await findRecentTransaction({
@@ -281,7 +281,7 @@ export async function resolveAndVerifyRecentTransfer(params: {
     if (!found && i < 4) await new Promise((r) => setTimeout(r, 1500));
   }
   if (!found) {
-    throw new Error("No matching completed transfer found — approve the PIN challenge first");
+    throw new Error("No matching completed transfer found - approve the PIN challenge first");
   }
   return verifyCompletedTransfer({
     transactionId: found.id,
@@ -294,7 +294,7 @@ export async function resolveAndVerifyRecentTransfer(params: {
 /**
  * Start a smart-contract call (e.g. USDC approve, or a GoalPool
  * contribute/requestWithdrawal/approveWithdrawal). Same challenge model as
- * transfers — Circle submits nothing on-chain until the user approves via
+ * transfers - Circle submits nothing on-chain until the user approves via
  * the Web SDK. Confirmed against Circle's API directly: idempotencyKey,
  * walletId, contractAddress, abiFunctionSignature, abiParameters, and a
  * flat feeLevel field (not the nested fee/config shape from the transfer
@@ -325,7 +325,7 @@ export async function createContractExecutionChallenge(params: {
 /**
  * Read current USDC allowance from a wallet to a spender (e.g. GoalPool),
  * so we only ask for an approve challenge when actually needed. Plain RPC
- * read — no Circle call, no wallet signature required.
+ * read - no Circle call, no wallet signature required.
  */
 export async function getUsdcAllowance(ownerAddress: string, spenderAddress: string): Promise<bigint> {
   const usdc = getUsdcContract();
@@ -336,7 +336,7 @@ export async function getUsdcAllowance(ownerAddress: string, spenderAddress: str
  * Find the most recent contract-execution transaction from this wallet to
  * a given contract, created within the lookback window. Circle's
  * contract-execution transactions haven't been exercised through a real
- * PIN approval as part of building this — this mirrors findRecentTransaction's
+ * PIN approval as part of building this - this mirrors findRecentTransaction's
  * matching approach (recency + address) defensively across the field names
  * Circle might use, but the exact shape should be double-checked the first
  * time this path runs against a live challenge.
@@ -414,7 +414,7 @@ export async function verifyCompletedContractExecution(params: {
     if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
   }
 
-  throw new Error("Transaction is taking longer than usual to settle — check back shortly");
+  throw new Error("Transaction is taking longer than usual to settle - check back shortly");
 }
 
 /**
@@ -439,7 +439,7 @@ export async function resolveAndVerifyRecentContractExecution(params: {
     if (!found && i < 4) await new Promise((r) => setTimeout(r, 1500));
   }
   if (!found) {
-    throw new Error("No matching completed transaction found — approve the PIN challenge first");
+    throw new Error("No matching completed transaction found - approve the PIN challenge first");
   }
   return verifyCompletedContractExecution({
     transactionId: found.id,

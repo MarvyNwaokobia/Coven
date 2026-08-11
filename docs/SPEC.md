@@ -1,7 +1,6 @@
 # Coven — Social USDC Payments on Arc
 
-> **Hackathon:** Arc Build Hackathon · Circle × Arc
-> **Track:** DeFi (Payments Infrastructure)
+> **Category:** DeFi · Payments Infrastructure
 > **Chain:** Arc L1 · USDC native gas · Sub-500ms finality
 > **Stack:** Next.js 14 · Supabase · Circle Programmable Wallets · CCTP · Yellow Card
 > **One Line:** Send USDC to anyone from any chain, cash out to any bank — built around communities not wallets.
@@ -24,7 +23,6 @@
 12. [Build Order](#12-build-order)
 13. [Environment Variables](#13-environment-variables)
 14. [File Structure](#14-file-structure)
-15. [Submission Checklist](#15-submission-checklist)
 
 ---
 
@@ -1659,24 +1657,5 @@ coven/
 └── .env.local
 ```
 
----
-
-## 15. Submission Checklist
-
-- [ ] Public GitHub repo with clean README
-- [ ] Contracts deployed and verified on Arc testnet
-- [ ] Live Vercel deployment (PWA installable on mobile)
-- [ ] 6 demo accounts set up with transaction history
-- [ ] At least $200 USDC transacted on Arc testnet
-- [ ] At least 1 successful CCTP cross-chain payment (Ethereum → Arc)
-- [ ] At least 1 successful Yellow Card offramp initiated
-- [ ] At least 2 circles with active splits
-- [ ] 3-minute Loom demo covering: signup → send → circle split → QR payment → cash out to bank
-- [ ] Deck: problem (crypto payments are fragmented) → solution (Coven) → Arc advantage (CCTP + sub-500ms + USDC gas) → live demo → revenue model
-- [ ] Checkpoint 1 submitted by July 19 ← **This Sunday**
-- [ ] Checkpoint 2 submitted by July 26
-- [ ] Final submitted by August 9
-
----
 
 *Coven · Send to anyone · From any chain · Cash out anywhere · Built on Arc*

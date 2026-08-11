@@ -2,8 +2,6 @@
 
 **Social USDC payments on Arc.** Send to an @username, split bills in a group, save toward a shared goal — and cash out to a local bank account. Payments settle on Arc in USDC, where USDC is also the gas token.
 
-Built for the **Arc Build Hackathon** (Circle × Arc) · DeFi / Payments Infrastructure track.
-
 ```
 Sender pays 50 USDC  →  settles on Arc (<500ms)  →  recipient's Circle wallet
                                                           ↓
@@ -11,6 +9,16 @@ Sender pays 50 USDC  →  settles on Arc (<500ms)  →  recipient's Circle walle
                                                           ↓
                                               ₦78,000 in a Nigerian bank account
 ```
+
+---
+
+## What Coven is
+
+Coven is a payments app, not a wallet. Users sign up with an email or phone number, claim a permanent `@username`, and start sending USDC to friends and merchants without ever seeing a seed phrase or a 42-character address. Behind the scenes, every account is backed by a Circle Programmable Wallet — non-custodial, user-controlled, and secured with a PIN the backend never has access to.
+
+Money moves on **Arc**, a purpose-built payments chain where USDC is also the native gas asset. That removes the usual onboarding wall in crypto payments: a new recipient doesn't need a separate token to pay fees before they can move the money they were just sent.
+
+Coven is built for real transfers between real people — splitting rent with roommates, paying a market vendor by QR code, sending money home, or collecting from a group for a shared goal — and for turning that USDC into local currency in a bank account, today across Nigeria, Ghana, Kenya, and South Africa.
 
 ---
 
@@ -33,6 +41,17 @@ Sender pays 50 USDC  →  settles on Arc (<500ms)  →  recipient's Circle walle
 | **Circles** | Groups with a shared activity feed, group sends, and bill splits |
 | **Goal pools** | Group savings on-chain — any member contributes any amount, and releasing the pot needs *every* member's approval |
 | **Cash out** | USDC → NGN / GHS / KES / ZAR into a local bank account via Yellow Card |
+
+---
+
+## How a payment actually works
+
+1. **Send.** The sender picks a recipient by `@username`, enters an amount, and confirms with their wallet PIN.
+2. **Sign.** The client runs a Circle PIN challenge and signs the transfer — the backend is never handed the PIN and can't initiate a transfer on the user's behalf.
+3. **Settle.** The transaction lands on Arc. Finality is on inclusion, so there's no waiting on confirmations before the app treats it as done.
+4. **Verify.** The server doesn't trust the client's word that a payment happened. It independently fetches the transaction from Circle and checks the wallet, destination, and amount match before writing a single row to the database. A client cannot fabricate a transaction id and have it recorded as paid.
+5. **Notify.** Both sides see the update in real time over Supabase Realtime — activity feed, balances, and notifications update without a refresh.
+6. **Cash out (optional).** The recipient can convert their USDC to local currency and send it straight to a bank account through Yellow Card, in Nigeria, Ghana, Kenya, or South Africa.
 
 ---
 
@@ -76,7 +95,15 @@ Sender pays 50 USDC  →  settles on Arc (<500ms)  →  recipient's Circle walle
 
 ---
 
-## Deployed contracts — Arc Testnet
+## The smart contracts
+
+Three contracts, each handling a specific piece of the money-movement logic on-chain rather than trusting the app's database alone:
+
+- **`PayCircle`** — fee-bearing sends and one-transaction group payouts. This is the core transfer path for direct sends and Circle-wide disbursements.
+- **`SplitEscrow`** — holds each member's share of a bill in escrow. Releases to the recipient automatically once the full amount is collected, and refunds every contributor if the split is cancelled or expires unpaid.
+- **`GoalPool`** — group savings with variable contributions toward a shared target. Withdrawing the pooled funds requires unanimous approval from every member, so no single person — including whoever created the pool — can drain it alone.
+
+### Deployed contracts — Arc Testnet
 
 | Contract | Address |
 |---|---|
@@ -85,15 +112,11 @@ Sender pays 50 USDC  →  settles on Arc (<500ms)  →  recipient's Circle walle
 | GoalPool | [`0xB496516bAAb570d73208a5210e4E95381751f428`](https://testnet.arcscan.app/address/0xB496516bAAb570d73208a5210e4E95381751f428) |
 | USDC (ERC-20, 6dp) | `0x3600000000000000000000000000000000000000` |
 
-- **`PayCircle`** — fee-bearing sends and one-transaction group payouts.
-- **`SplitEscrow`** — holds each member's share of a bill; releases to the recipient once fully collected, refunds everyone on cancel or expiry.
-- **`GoalPool`** — variable contributions toward a shared target; withdrawal requires unanimous member approval, so no one can drain the pot alone.
-
 > **Arc's dual-decimals trap:** native USDC is 18 decimals (gas, `msg.value`), the ERC-20 interface is 6 decimals (`transfer`, `balanceOf`). All contract and app math is 6-decimal ERC-20. See [`docs/ARC_TESTNET.md`](docs/ARC_TESTNET.md).
 
 ---
 
-## Quickstart
+## Getting started
 
 **Requires** Node 20+, pnpm, a Supabase project, a Circle developer account, and [Foundry](https://book.getfoundry.sh) if you're touching contracts.
 
@@ -158,11 +181,22 @@ docs/
 
 ---
 
+## Security model
+
+- **Non-custodial by design.** Wallets are user-controlled Circle Programmable Wallets. The backend stores no private keys and cannot move a user's funds without that user completing a PIN challenge on their own device.
+- **Server-verified settlement.** No payment is recorded as complete because the client said so. The server re-fetches the transaction from Circle and checks the wallet, destination, and amount before writing it to the database.
+- **Unanimous approval on shared funds.** `GoalPool` withdrawals require every contributing member to sign off — a majority, or the pool's creator, cannot unilaterally withdraw the group's money.
+- **Encrypted bank details.** Linked bank account numbers used for cash-out are encrypted at rest with AES-256-GCM before they touch the database.
+- **Row-level security.** Supabase RLS policies scope every read and write to the authenticated user, so one account cannot query another user's private data through the API.
+
+---
+
 ## Roadmap
 
 - Cross-chain send UI — the CCTP relay and attestation path are built and the relayer is funded on Arc; the source-chain wallet connector is the remaining piece.
 - On-chain settlement for cash-out fees via `PayCircle.collectOfframpFee`.
 - Push and SMS notifications alongside the existing in-app feed.
+- Expanding cash-out coverage beyond Nigeria, Ghana, Kenya, and South Africa.
 
 ---
 

@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { resolveAndVerifyRecentContractExecution } from "@/lib/circle/wallets";
-import { getGoalForMember, goalPoolAddress, parseEventFromTx } from "@/lib/server/goals";
+import { getGoalForMember, goalPoolAddress, readWithdrawal, WITHDRAWAL_STATUS } from "@/lib/server/goals";
+import { getGoalPoolContract } from "@/lib/contracts";
 import { recordActivity } from "@/lib/server/activity";
-
-const WITHDRAWAL_EXECUTED_EVENT =
-  "event WithdrawalExecuted(uint256 indexed withdrawalId, bytes32 indexed goalId, address recipient, uint256 amount)";
 
 /**
  * POST /api/goals/[goalId]/withdraw-approve-confirm
  * If this was the final approval needed, the contract auto-executes the
- * withdrawal in the same transaction - this checks for WithdrawalExecuted
- * in the receipt and finalizes everything if present.
+ * withdrawal in the same transaction. Both facts are read from the contract
+ * (this member's approval, and whether the withdrawal executed) rather than
+ * inferred from whichever recent transaction Circle happens to return.
  */
 export async function POST(
   req: Request,
@@ -37,19 +36,31 @@ export async function POST(
   if (!withdrawal) return NextResponse.json({ error: "No pending withdrawal request" }, { status: 404 });
 
   try {
+    if (!user.wallet_address || !withdrawal.contract_withdrawal_id) {
+      return NextResponse.json({ error: "Wallet or withdrawal is not confirmed on-chain" }, { status: 409 });
+    }
+
     const { txHash } = await resolveAndVerifyRecentContractExecution({
       userId: user.id,
       walletId: user.circle_wallet_id,
       contractAddress: goalPoolAddress(),
     });
 
+    const goalPool = getGoalPoolContract();
+    const approvedOnChain: boolean = await goalPool.hasApprovedWithdrawal(
+      withdrawal.contract_withdrawal_id,
+      user.wallet_address
+    );
+    if (!approvedOnChain) {
+      return NextResponse.json({ error: "Your approval was not found on-chain" }, { status: 409 });
+    }
+
     await admin
       .from("goal_withdrawal_approvals")
       .insert({ withdrawal_id: withdrawal.id, user_id: user.id });
 
-    const executed = txHash
-      ? await parseEventFromTx<{ withdrawalId: bigint }>(txHash, WITHDRAWAL_EXECUTED_EVENT, "WithdrawalExecuted")
-      : null;
+    const onChain = await readWithdrawal(withdrawal.contract_withdrawal_id);
+    const executed = onChain.status === WITHDRAWAL_STATUS.Executed;
 
     if (executed) {
       await admin
@@ -89,7 +100,7 @@ export async function POST(
       ]);
     }
 
-    return NextResponse.json({ executed: Boolean(executed) });
+    return NextResponse.json({ executed });
   } catch (e) {
     console.error("Withdrawal approval confirmation failed:", e);
     return NextResponse.json(

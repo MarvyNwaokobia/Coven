@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { resolveAndVerifyRecentContractExecution } from "@/lib/circle/wallets";
-import { getGoalForMember, goalPoolAddress, parseEventFromTx } from "@/lib/server/goals";
+import { getGoalForMember, goalPoolAddress, parseEventFromTx, sameAddress } from "@/lib/server/goals";
+import { fromUsdcUnits } from "@/lib/contracts";
 import { recordActivity } from "@/lib/server/activity";
+
+type WithdrawalRequestedArgs = {
+  withdrawalId: bigint;
+  goalId: string;
+  requester: string;
+  recipient: string;
+  amount: bigint;
+};
 
 const WITHDRAWAL_REQUESTED_EVENT =
   "event WithdrawalRequested(uint256 indexed withdrawalId, bytes32 indexed goalId, address indexed requester, address recipient, uint256 amount)";
@@ -14,6 +23,13 @@ const WITHDRAWAL_EXECUTED_EVENT =
  * A single-member goal (or any goal where the requester is the only
  * member) auto-executes on-chain in the same transaction - this checks
  * for both WithdrawalRequested and WithdrawalExecuted in the receipt.
+ *
+ * The goal, requester and recipient in the WithdrawalRequested event must
+ * match this request, and the amount recorded is the one the contract
+ * snapshotted. The other members approve from what we store here, and
+ * approveWithdrawal carries no recipient or amount, so anything the client
+ * could get us to record that differs from the chain is a way to get a
+ * payout approved that the approvers were not shown.
  */
 export async function POST(
   req: Request,
@@ -34,10 +50,15 @@ export async function POST(
   const admin = getSupabaseAdmin();
   const { data: recipient } = await admin
     .from("users")
-    .select("id")
+    .select("id, wallet_address")
     .eq("username", String(recipientUsername).replace(/^@/, "").toLowerCase())
     .maybeSingle();
-  if (!recipient) return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
+  if (!recipient?.wallet_address) {
+    return NextResponse.json({ error: "Recipient not found or has no wallet" }, { status: 404 });
+  }
+  if (!found.goal.contract_goal_id || !user.wallet_address) {
+    return NextResponse.json({ error: "Goal or wallet is not confirmed on-chain" }, { status: 409 });
+  }
 
   try {
     const { txHash } = await resolveAndVerifyRecentContractExecution({
@@ -49,7 +70,7 @@ export async function POST(
       return NextResponse.json({ error: "Transaction has no hash yet - try again shortly" }, { status: 502 });
     }
 
-    const requested = await parseEventFromTx<{ withdrawalId: bigint }>(
+    const requested = await parseEventFromTx<WithdrawalRequestedArgs>(
       txHash,
       WITHDRAWAL_REQUESTED_EVENT,
       "WithdrawalRequested"
@@ -57,11 +78,25 @@ export async function POST(
     if (!requested) {
       return NextResponse.json({ error: "Could not read the withdrawal request from-chain" }, { status: 502 });
     }
-    const executed = await parseEventFromTx<{ withdrawalId: bigint }>(
+    if (
+      requested.goalId.toLowerCase() !== found.goal.contract_goal_id.toLowerCase() ||
+      !sameAddress(requested.requester, user.wallet_address) ||
+      !sameAddress(requested.recipient, recipient.wallet_address)
+    ) {
+      return NextResponse.json(
+        { error: "The on-chain withdrawal request does not match this goal, requester and recipient" },
+        { status: 409 }
+      );
+    }
+    const executedEvent = await parseEventFromTx<{ withdrawalId: bigint }>(
       txHash,
       WITHDRAWAL_EXECUTED_EVENT,
       "WithdrawalExecuted"
     );
+    const executed = executedEvent?.withdrawalId === requested.withdrawalId ? executedEvent : null;
+
+    // The amount the contract will pay out, not the DB's running total.
+    const amountUsdc = fromUsdcUnits(requested.amount);
 
     const { data: withdrawal, error } = await admin
       .from("goal_withdrawal_requests")
@@ -70,7 +105,7 @@ export async function POST(
         contract_withdrawal_id: requested.withdrawalId.toString(),
         requested_by: user.id,
         recipient_user_id: recipient.id,
-        amount_usdc: found.goal.collected_usdc,
+        amount_usdc: amountUsdc,
         status: executed ? "executed" : "pending",
         tx_hash: executed ? txHash : null,
       })
@@ -90,7 +125,7 @@ export async function POST(
       await admin.from("payments").insert({
         from_user_id: null,
         to_user_id: recipient.id,
-        amount_usdc: found.goal.collected_usdc,
+        amount_usdc: amountUsdc,
         note: found.goal.description,
         source_chain: "ARC",
         tx_hash: txHash,
@@ -105,7 +140,7 @@ export async function POST(
             type: "goal_withdrawn" as const,
             reference_id: goalId,
             actor_id: user.id,
-            amount_usdc: found.goal.collected_usdc,
+            amount_usdc: amountUsdc,
             note: found.goal.description,
           })),
         {
@@ -115,7 +150,7 @@ export async function POST(
           type: "payment_received" as const,
           reference_id: goalId,
           actor_id: null,
-          amount_usdc: found.goal.collected_usdc,
+          amount_usdc: amountUsdc,
           note: found.goal.description,
         },
       ]);
@@ -128,7 +163,7 @@ export async function POST(
             type: "goal_withdrawal_requested" as const,
             reference_id: goalId,
             actor_id: user.id,
-            amount_usdc: found.goal.collected_usdc,
+            amount_usdc: amountUsdc,
             note: found.goal.description,
           }))
       );

@@ -3,19 +3,34 @@ import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { decrypt } from "@/lib/crypto";
 import { initiateOfframp, getExchangeRate, BankDetails } from "@/lib/yellowcard/offramp";
 import { recordActivity } from "@/lib/server/activity";
+import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
+import { offrampCollectionAddress, roundUsdc } from "@/lib/server/offramp";
 
 /**
  * POST /api/cashout/initiate - body: { amountUsdc, bankAccountId }
- * 1% platform fee, then Yellow Card payout with the net amount.
+ * The client must have already run a PIN challenge via
+ * /api/circle/transfer-challenge ({ kind: "cashout" }), moving the full
+ * amount to the platform collection wallet. We verify that transfer settled
+ * and has not funded a payout before, then take the 1% platform fee and
+ * request a Yellow Card payout of the net amount. Nothing is paid out
+ * against a deposit we have not seen.
  */
 export async function POST(req: Request) {
   const user = await getAuthedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { amountUsdc, bankAccountId } = await req.json();
-  const amount = Number(amountUsdc);
+  const amount = roundUsdc(Number(amountUsdc));
   if (!amount || amount <= 0 || !bankAccountId) {
     return NextResponse.json({ error: "amountUsdc and bankAccountId required" }, { status: 400 });
+  }
+
+  const collection = offrampCollectionAddress();
+  if (!collection) {
+    return NextResponse.json({ error: "Cash out is not available right now" }, { status: 503 });
+  }
+  if (!user.circle_wallet_id) {
+    return NextResponse.json({ error: "Your wallet is not provisioned yet" }, { status: 400 });
   }
 
   const admin = getSupabaseAdmin();
@@ -28,7 +43,30 @@ export async function POST(req: Request) {
 
   if (!bank) return NextResponse.json({ error: "Bank account not found" }, { status: 404 });
 
-  const fee = Math.round(amount * 0.01 * 1e6) / 1e6; // 1%
+  let depositTxHash: string | null;
+  try {
+    ({ txHash: depositTxHash } = await resolveAndVerifyRecentTransfer({
+      userId: user.id,
+      walletId: user.circle_wallet_id,
+      destinationAddress: collection,
+      amountUsdc: amount,
+    }));
+  } catch (e) {
+    console.error("Cash out deposit verification failed:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Your USDC transfer could not be verified" },
+      { status: 502 }
+    );
+  }
+  if (!depositTxHash) {
+    // Without a hash we cannot guarantee the deposit only funds one payout.
+    return NextResponse.json(
+      { error: "Your transfer has no transaction hash yet - try again shortly" },
+      { status: 502 }
+    );
+  }
+
+  const fee = roundUsdc(amount * 0.01); // 1%
   const net = amount - fee;
 
   const bankDetails: BankDetails = {
@@ -47,6 +85,7 @@ export async function POST(req: Request) {
       amount_usdc: amount,
       fee_usdc: fee,
       net_usdc: net,
+      deposit_tx_hash: depositTxHash,
       target_currency: bank.currency,
       bank_account_id: bank.id,
       status: "pending",
@@ -54,7 +93,15 @@ export async function POST(req: Request) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    if (error.code === "23505") {
+      return NextResponse.json(
+        { error: "This transfer has already been used for a cash out" },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
 
   try {
     const result = await initiateOfframp(net, bankDetails, payout.id);
@@ -83,7 +130,14 @@ export async function POST(req: Request) {
         amount_usdc: amount,
       },
     ]);
-    return NextResponse.json({ error: "Cash out failed - try again" }, { status: 502 });
+    // The user's USDC is already with us at this point, so "try again" would make
+    // them pay twice. The deposit is recorded on the failed payout for support.
+    return NextResponse.json(
+      {
+        error: `Cash out could not be completed. Your USDC transfer was received - contact support with reference ${payout.id}.`,
+      },
+      { status: 502 }
+    );
   }
 }
 

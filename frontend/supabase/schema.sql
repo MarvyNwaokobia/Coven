@@ -185,6 +185,7 @@ create table if not exists offramp_payouts (
   expected_amount numeric(20,2),
   bank_account_id uuid references bank_accounts(id),
   yellow_card_payout_id text,
+  deposit_tx_hash text unique, -- Arc tx that moved the user's USDC to the collection wallet; one payout per deposit
   status text default 'pending'
     check (status in ('pending','processing','completed','failed')),
   tracking_ref text,

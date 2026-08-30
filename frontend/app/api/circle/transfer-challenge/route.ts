@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { getCircleUserToken, createTransferChallenge } from "@/lib/circle/wallets";
+import { offrampCollectionAddress, roundUsdc } from "@/lib/server/offramp";
 
 type ChallengeRequest =
   | { kind: "send"; toUsername: string; amountUsdc: number }
   | { kind: "circle-member"; toUsername: string; amountUsdc: number }
   | { kind: "request"; requestId: string }
-  | { kind: "split"; splitId: string };
+  | { kind: "split"; splitId: string }
+  | { kind: "cashout"; amountUsdc: number };
 
 /**
  * POST /api/circle/transfer-challenge
@@ -92,6 +94,18 @@ export async function POST(req: Request) {
       }
       destinationAddress = creator.wallet_address;
       amount = Number(share.amount_owed_usdc);
+    } else if (body.kind === "cashout") {
+      // Funds the payout: the full amount goes to the platform's collection
+      // wallet, and /api/cashout/initiate verifies it before paying anyone.
+      const collection = offrampCollectionAddress();
+      if (!collection) {
+        return NextResponse.json({ error: "Cash out is not available right now" }, { status: 503 });
+      }
+      amount = roundUsdc(Number(body.amountUsdc));
+      if (!amount || amount <= 0) {
+        return NextResponse.json({ error: "positive amountUsdc required" }, { status: 400 });
+      }
+      destinationAddress = collection;
     } else {
       return NextResponse.json({ error: "Unknown challenge kind" }, { status: 400 });
     }

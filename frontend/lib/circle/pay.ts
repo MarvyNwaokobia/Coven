@@ -7,7 +7,8 @@ export type TransferChallengeRequest =
   | { kind: "send"; toUsername: string; amountUsdc: number }
   | { kind: "circle-member"; toUsername: string; amountUsdc: number }
   | { kind: "request"; requestId: string }
-  | { kind: "split"; splitId: string };
+  | { kind: "split"; splitId: string }
+  | { kind: "cashout"; amountUsdc: number };
 
 /**
  * Requests a transfer challenge from the backend, then runs it through the

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { BanknoteIcon, PlusIcon, CheckCircleIcon } from "@/components/Icons";
 import { api } from "@/lib/api-client";
+import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC, formatLocal } from "@/lib/format";
 import type { BankAccount } from "@/lib/types";
@@ -36,6 +37,9 @@ export default function CashoutPage() {
   });
   const [savingBank, setSavingBank] = useState(false);
   const [cashingOut, setCashingOut] = useState(false);
+  // Amount already sent to the platform for this cash out. If the payout
+  // request fails after the transfer, retrying must not ask them to pay again.
+  const [sentAmount, setSentAmount] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -86,6 +90,10 @@ export default function CashoutPage() {
     setCashingOut(true);
     setError("");
     try {
+      if (sentAmount !== amt) {
+        await approveTransfer({ kind: "cashout", amountUsdc: amt });
+        setSentAmount(amt);
+      }
       await api("/api/cashout/initiate", {
         json: { amountUsdc: amt, bankAccountId: selected },
       });

@@ -52,3 +52,16 @@ export async function approveGoalWithdrawal(goalId: string): Promise<{ executed:
   await runChallenge(creds);
   return api(`/api/goals/${goalId}/withdraw-approve-confirm`, { json: {} });
 }
+
+export type GoalAction = "start-exit" | "cancel-exit" | "dissolve" | "claim-refund" | "cancel-withdrawal";
+
+/**
+ * Run one of the goal actions that is neither a contribution nor an approval:
+ * a time-locked exit, claiming a refund after a goal is dissolved, or calling
+ * off your own withdrawal request. One PIN challenge, then a confirm.
+ */
+export async function goalAction(goalId: string, action: GoalAction): Promise<void> {
+  const creds = await api<ChallengeCredentials>(`/api/goals/${goalId}/action-challenge`, { json: { action } });
+  await runChallenge(creds);
+  await api(`/api/goals/${goalId}/action-confirm`, { json: { action } });
+}

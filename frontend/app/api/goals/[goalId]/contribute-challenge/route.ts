@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthedUser } from "@/lib/supabase";
 import { createContractExecutionChallenge, getCircleUserToken, getUsdcAllowance } from "@/lib/circle/wallets";
-import { getGoalForMember, goalPoolAddress, usdcBaseUnits } from "@/lib/server/goals";
+import { getGoalForMember, goalPoolAddress, GOAL_STATUS, readGoalState, usdcBaseUnits } from "@/lib/server/goals";
 
 const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
@@ -41,6 +41,19 @@ export async function POST(
   }
 
   try {
+    // GoalPool refuses contributions while a withdrawal is pending (they would be left behind
+    // when the goal pays out), so say so here instead of after the member approves a PIN.
+    const chain = await readGoalState(found.goal.contract_goal_id);
+    if (chain.status !== GOAL_STATUS.Open) {
+      return NextResponse.json({ error: "This goal is no longer open" }, { status: 409 });
+    }
+    if (chain.activeWithdrawalId !== BigInt(0)) {
+      return NextResponse.json(
+        { error: "A withdrawal is pending - contributions resume once it is paid out or cancelled" },
+        { status: 409 }
+      );
+    }
+
     const { userToken, encryptionKey } = await getCircleUserToken(user.id);
     const amountBase = usdcBaseUnits(amount);
 

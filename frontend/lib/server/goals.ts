@@ -114,3 +114,37 @@ export function withdrawalMismatch(
   }
   return null;
 }
+
+export const GOAL_STATUS = { None: 0, Open: 1, Withdrawn: 2, Cancelled: 3 } as const;
+
+export interface OnChainGoal {
+  status: number;
+  collected: bigint;
+  /** Zero when no withdrawal request is pending. */
+  activeWithdrawalId: bigint;
+  /** Unix seconds when the goal can be dissolved; 0 when no exit countdown is running. */
+  exitAt: number;
+  exitInitiator: string;
+  /** What `wallet` contributed (after dissolution: what it has not yet claimed). */
+  contributionOfWallet: bigint;
+  /** Latest block time, the clock the contract itself uses. */
+  now: number;
+}
+
+/** Read a goal's live state from GoalPool. The chain, not the DB, decides what is allowed. */
+export async function readGoalState(contractGoalId: string, wallet?: string | null): Promise<OnChainGoal> {
+  const pool = getGoalPoolContract();
+  const [, , collected, status, , activeWithdrawalId] = await pool.getGoal(contractGoalId);
+  const [exitAt, exitInitiator] = await pool.exitOf(contractGoalId);
+  const contributionOfWallet: bigint = wallet ? await pool.contributionOf(contractGoalId, wallet) : BigInt(0);
+  const block = await getArcProvider().getBlock("latest");
+  return {
+    status: Number(status),
+    collected,
+    activeWithdrawalId,
+    exitAt: Number(exitAt),
+    exitInitiator,
+    contributionOfWallet,
+    now: block?.timestamp ?? Math.floor(Date.now() / 1000),
+  };
+}

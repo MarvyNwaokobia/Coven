@@ -113,6 +113,8 @@ create table if not exists circle_goals (
   description text not null,
   status text default 'open'
     check (status in ('open','withdrawn','cancelled')),
+  dissolve_at timestamptz,          -- when the on-chain exit countdown ends (null = none running)
+  dissolve_initiator_id uuid references users(id),
   created_at timestamptz default now()
 );
 

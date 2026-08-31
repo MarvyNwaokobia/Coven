@@ -87,6 +87,9 @@ export interface Goal {
   collected_usdc: number;
   description: string;
   status: "open" | "withdrawn" | "cancelled";
+  /** When the on-chain exit countdown ends and any member can dissolve the goal; null when none is running. */
+  dissolve_at: string | null;
+  dissolve_initiator_id: string | null;
   created_at: string;
   members?: User[];
   withdrawal?: GoalWithdrawal[];

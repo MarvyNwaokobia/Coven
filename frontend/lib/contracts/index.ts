@@ -29,8 +29,14 @@ export const GOAL_POOL_ABI = [
   "function createGoal(address[] members, uint256 targetAmount, string description) returns (bytes32)",
   "function contribute(bytes32 goalId, uint256 amount)",
   "function requestWithdrawal(bytes32 goalId, address recipient) returns (uint256)",
-  "function approveWithdrawal(uint256 withdrawalId)",
+  "function approveWithdrawal(uint256 withdrawalId, address recipient, uint256 amount)",
   "function cancelWithdrawalRequest(uint256 withdrawalId)",
+  "function startExit(bytes32 goalId)",
+  "function cancelExit(bytes32 goalId)",
+  "function dissolve(bytes32 goalId)",
+  "function claimRefund(bytes32 goalId)",
+  "function exitOf(bytes32 goalId) view returns (uint256 exitAt, address initiator)",
+  "function EXIT_DELAY() view returns (uint256)",
   "function getGoal(bytes32 goalId) view returns (address creator, uint256 targetAmount, uint256 collected, uint8 status, string description, uint256 activeWithdrawalId)",
   "function getMembers(bytes32 goalId) view returns (address[])",
   "function isMember(bytes32 goalId, address account) view returns (bool)",
@@ -42,6 +48,11 @@ export const GOAL_POOL_ABI = [
   "event WithdrawalRequested(uint256 indexed withdrawalId, bytes32 indexed goalId, address indexed requester, address recipient, uint256 amount)",
   "event WithdrawalApproved(uint256 indexed withdrawalId, address indexed member, uint256 approvalCount, uint256 requiredCount)",
   "event WithdrawalExecuted(uint256 indexed withdrawalId, bytes32 indexed goalId, address recipient, uint256 amount)",
+  "event WithdrawalCancelled(uint256 indexed withdrawalId, bytes32 indexed goalId)",
+  "event GoalCancelled(bytes32 indexed goalId)",
+  "event ExitStarted(bytes32 indexed goalId, address indexed initiator, uint256 exitAt)",
+  "event ExitCancelled(bytes32 indexed goalId)",
+  "event Refunded(bytes32 indexed goalId, address indexed member, uint256 amount)",
 ];
 
 /** Minimal ERC20 read/approve ABI for allowance checks. */

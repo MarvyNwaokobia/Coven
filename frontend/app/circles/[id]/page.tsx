@@ -24,11 +24,16 @@ import {
   contributeToGoal,
   requestGoalWithdrawal,
   approveGoalWithdrawal,
+  goalAction,
+  type GoalAction,
 } from "@/lib/circle/goals";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC, relativeTime } from "@/lib/format";
 import type { Circle, Split, Payment, User, Goal } from "@/lib/types";
 import { UserGroupIcon, PlusIcon, TargetIcon, BanknoteIcon } from "@/components/Icons";
+
+/** How long an exit countdown runs. Must match GOAL_EXIT_DELAY_DAYS when GoalPool is deployed. */
+const GOAL_EXIT_DAYS = 30;
 
 interface CircleDetail {
   circle: Circle & { members: User[] };
@@ -178,6 +183,19 @@ export default function CircleDetailPage() {
     }
   }
 
+  async function handleGoalAction(goalId: string, action: GoalAction) {
+    setGoalActionBusy(goalId);
+    setGoalError("");
+    try {
+      await goalAction(goalId, action);
+      load();
+    } catch (e) {
+      setGoalError(e instanceof Error ? e.message : "That did not go through");
+    } finally {
+      setGoalActionBusy(null);
+    }
+  }
+
   if (loadFailed) {
     return (
       <AppShell title="Circle" back>
@@ -217,6 +235,7 @@ export default function CircleDetailPage() {
   const { circle, splits, goals, payments } = data;
   const openSplits = splits.filter((s) => s.status === "open");
   const openGoals = goals.filter((g) => g.status === "open");
+  const dissolvedGoals = goals.filter((g) => g.status === "cancelled");
 
   return (
     <AppShell
@@ -331,7 +350,7 @@ export default function CircleDetailPage() {
         )}
 
         {/* -------------------------------------------- Splits and goals */}
-        {(openSplits.length > 0 || openGoals.length > 0) && (
+        {(openSplits.length > 0 || openGoals.length > 0 || dissolvedGoals.length > 0) && (
           <div className="grid gap-4 lg:grid-cols-2">
             {openSplits.map((s) => {
               const pct = Math.round(
@@ -431,23 +450,36 @@ export default function CircleDetailPage() {
                         <span className="font-bold">
                           @{pendingWithdrawal.requester?.username}
                         </span>{" "}
-                        requested a withdrawal to{" "}
+                        requested a withdrawal of {formatUSDC(pendingWithdrawal.amount_usdc)} to{" "}
                         <span className="font-bold">
                           @{pendingWithdrawal.recipient?.username}
                         </span>{" "}
                         · {pendingWithdrawal.approvals?.length ?? 0}/{g.members?.length ?? 0}{" "}
-                        approved.
+                        approved. Contributions are paused until it is paid out or cancelled.
                       </p>
-                      {!iApproved && (
-                        <Button
-                          fullWidth
-                          size="sm"
-                          loading={acting}
-                          onClick={() => handleApproveWithdrawal(g.id)}
-                        >
-                          Approve withdrawal
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        {!iApproved && (
+                          <Button
+                            fullWidth
+                            size="sm"
+                            loading={acting}
+                            onClick={() => handleApproveWithdrawal(g.id)}
+                          >
+                            Approve withdrawal
+                          </Button>
+                        )}
+                        {pendingWithdrawal.requested_by === user?.id && (
+                          <Button
+                            fullWidth={iApproved}
+                            size="sm"
+                            variant="ghost"
+                            loading={acting}
+                            onClick={() => handleGoalAction(g.id, "cancel-withdrawal")}
+                          >
+                            Cancel request
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -498,9 +530,85 @@ export default function CircleDetailPage() {
                       )}
                     </>
                   )}
+
+                  {/* A way out when the group can never reach unanimity (lost key, absent member). */}
+                  <div className="space-y-2 border-t border-line pt-3.5">
+                    {g.dissolve_at ? (
+                      <>
+                        <p className="text-xs leading-relaxed text-ink-soft">
+                          {new Date(g.dissolve_at).getTime() <= Date.now()
+                            ? "The exit countdown has finished. Any member can dissolve this goal."
+                            : `An exit countdown is running. Any member can dissolve this goal after ${new Date(g.dissolve_at).toLocaleDateString()}.`}{" "}
+                          Everyone then claims back exactly what they put in.
+                        </p>
+                        <div className="flex gap-2">
+                          {new Date(g.dissolve_at).getTime() <= Date.now() && (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              loading={acting}
+                              onClick={() => handleGoalAction(g.id, "dissolve")}
+                            >
+                              Dissolve goal
+                            </Button>
+                          )}
+                          {g.dissolve_initiator_id === user?.id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              loading={acting}
+                              onClick={() => handleGoalAction(g.id, "cancel-exit")}
+                            >
+                              Cancel exit
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs leading-relaxed text-ink-mute">
+                          Can&apos;t get everyone to approve? Starting an exit begins a {GOAL_EXIT_DAYS}-day
+                          countdown. After it, any member can dissolve the goal and everyone claims back
+                          exactly what they put in.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={acting}
+                          onClick={() => handleGoalAction(g.id, "start-exit")}
+                        >
+                          Exit this goal
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </Card>
               );
             })}
+
+            {dissolvedGoals.map((g) => (
+              <Card key={g.id} className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-ink">{g.description}</p>
+                    <p className="text-xs text-ink-mute">Savings goal</p>
+                  </div>
+                  <StatusChip status={g.status} />
+                </div>
+                <p className="text-xs leading-relaxed text-ink-soft">
+                  This goal was dissolved. If you contributed, your contribution is waiting for you.
+                </p>
+                <Button
+                  fullWidth
+                  size="sm"
+                  variant="secondary"
+                  loading={goalActionBusy === g.id}
+                  onClick={() => handleGoalAction(g.id, "claim-refund")}
+                >
+                  Claim my contribution
+                </Button>
+              </Card>
+            ))}
           </div>
         )}
 

@@ -165,10 +165,12 @@ cast call <PAYCIRCLE_ADDRESS> "feeTreasury()(address)" --rpc-url $ARC_RPC_URL
 |---|---|
 | PayCircle | `0x5f4c5E9DA66935732e464F447d15E37E33E2daA4` |
 | SplitEscrow | `0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E` |
-| GoalPool (deployed 2026-07-25) | `0xB496516bAAb570d73208a5210e4E95381751f428` |
+| GoalPool v2 (deployed 2026-09-21, 30-day exit delay) | `0x49D4F073a25172209333aEB5BFFB42E58a57e9f5` |
 | Fee treasury | `0x5Ab64c56Df2d01A0c76534E01b6a06Cd3d79391C` |
 
 These are wired into `frontend/.env.example` as `NEXT_PUBLIC_PAYCIRCLE_CONTRACT` / `NEXT_PUBLIC_SPLIT_ESCROW_CONTRACT` / `NEXT_PUBLIC_GOAL_POOL_CONTRACT`. Redeploy and update both places if the contracts change. GoalPool has its own deploy script (`contract/script/DeployGoalPool.s.sol`) so it can be redeployed without touching the other two.
+
+The first GoalPool (`0xB496516bAAb570d73208a5210e4E95381751f428`, deployed 2026-07-25) is retired. It never held any funds. v2 fixes contributions being stranded while a withdrawal is pending, binds an approval to the request's recipient and amount, and adds a time-locked exit so one absent member cannot freeze a pool. Set the exit delay at deploy time with `GOAL_EXIT_DELAY_DAYS` (default 30, minimum 1); it is immutable afterwards, and the app's `GOAL_EXIT_DAYS` in `app/circles/[id]/page.tsx` must match it.
 
 ---
 

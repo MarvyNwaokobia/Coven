@@ -67,8 +67,10 @@ export async function POST(
       userToken,
       walletId: user.circle_wallet_id,
       contractAddress: goalPoolAddress(),
-      abiFunctionSignature: "approveWithdrawal(uint256)",
-      abiParameters: [withdrawal.contract_withdrawal_id as string],
+      // The contract reverts unless these match the request, so the approval is bound to
+      // exactly the recipient and amount checked above, not just to an id.
+      abiFunctionSignature: "approveWithdrawal(uint256,address,uint256)",
+      abiParameters: [withdrawal.contract_withdrawal_id as string, recipientAddress, onChain.amount.toString()],
     });
     return NextResponse.json({ userToken, encryptionKey, challengeId });
   } catch (e) {

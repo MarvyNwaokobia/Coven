@@ -107,9 +107,9 @@ Three contracts, each handling a specific piece of the money-movement logic on-c
 
 | Contract | Address |
 |---|---|
-| PayCircle | [`0x5f4c5E9DA66935732e464F447d15E37E33E2daA4`](https://testnet.arcscan.app/address/0x5f4c5E9DA66935732e464F447d15E37E33E2daA4) |
-| SplitEscrow | [`0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E`](https://testnet.arcscan.app/address/0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E) |
-| GoalPool | [`0x49D4F073a25172209333aEB5BFFB42E58a57e9f5`](https://testnet.arcscan.app/address/0x49D4F073a25172209333aEB5BFFB42E58a57e9f5) |
+| PayCircle | [`0x5f4c5E9DA66935732e464F447d15E37E33E2daA4`](https://explorer.testnet.arc.io/address/0x5f4c5E9DA66935732e464F447d15E37E33E2daA4) |
+| SplitEscrow | [`0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E`](https://explorer.testnet.arc.io/address/0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E) |
+| GoalPool | [`0x49D4F073a25172209333aEB5BFFB42E58a57e9f5`](https://explorer.testnet.arc.io/address/0x49D4F073a25172209333aEB5BFFB42E58a57e9f5) |
 | USDC (ERC-20, 6dp) | `0x3600000000000000000000000000000000000000` |
 
 > **Arc's dual-decimals trap:** native USDC is 18 decimals (gas, `msg.value`), the ERC-20 interface is 6 decimals (`transfer`, `balanceOf`). All contract and app math is 6-decimal ERC-20. See [`docs/ARC_TESTNET.md`](docs/ARC_TESTNET.md).

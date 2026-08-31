@@ -11,7 +11,7 @@ Distilled from [docs.arc.io](https://docs.arc.io/integrate) (fetched 2026-07-17)
 | Network name | Arc Testnet |
 | Chain ID | `5042002` |
 | Native gas token | USDC (18 decimals at the native layer) |
-| Block explorer | https://testnet.arcscan.app (Blockscout) |
+| Block explorer | https://explorer.testnet.arc.io (Blockscout; the old testnet.arcscan.app host now 301-redirects here, which drops the body of `forge verify-contract` POSTs, so always pass the new host as `--verifier-url`) |
 | Faucet | https://faucet.circle.com (select Arc Testnet → dispenses testnet USDC) |
 | Block time | ~0.5s · deterministic finality on inclusion (single confirmation is final, no reorgs) |
 
@@ -146,13 +146,13 @@ forge script script/Deploy.s.sol:DeployScript \
 forge verify-contract <PAYCIRCLE_ADDRESS> src/PayCircle.sol:PayCircle \
   --chain-id 5042002 \
   --verifier blockscout \
-  --verifier-url https://testnet.arcscan.app/api/ \
+  --verifier-url https://explorer.testnet.arc.io/api/ \
   --constructor-args $(cast abi-encode "constructor(address,address,address)" $ARC_USDC_ADDRESS $PLATFORM_FEE_WALLET $DEPLOYER_ADDRESS)
 
 forge verify-contract <SPLITESCROW_ADDRESS> src/SplitEscrow.sol:SplitEscrow \
   --chain-id 5042002 \
   --verifier blockscout \
-  --verifier-url https://testnet.arcscan.app/api/ \
+  --verifier-url https://explorer.testnet.arc.io/api/ \
   --constructor-args $(cast abi-encode "constructor(address)" $ARC_USDC_ADDRESS)
 
 # Interact

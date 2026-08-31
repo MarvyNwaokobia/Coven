@@ -16,16 +16,19 @@ import { GoalPool } from "../src/GoalPool.sol";
  *     --legacy
  *
  * Required env vars: ARC_USDC_ADDRESS
+ * Optional: GOAL_EXIT_DELAY_DAYS (default 30) - how long an exit countdown runs before a goal can be dissolved
  */
 contract DeployGoalPoolScript is Script {
     function run() external {
         address usdc = vm.envAddress("ARC_USDC_ADDRESS");
+        uint256 exitDelayDays = vm.envOr("GOAL_EXIT_DELAY_DAYS", uint256(30));
 
         vm.startBroadcast();
-        GoalPool goalPool = new GoalPool(usdc);
+        GoalPool goalPool = new GoalPool(usdc, exitDelayDays * 1 days);
         vm.stopBroadcast();
 
         console.log("GoalPool deployed:", address(goalPool));
         console.log("USDC:", usdc);
+        console.log("Exit delay (days):", exitDelayDays);
     }
 }

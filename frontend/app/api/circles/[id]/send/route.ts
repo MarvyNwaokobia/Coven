@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { recordActivity } from "@/lib/server/activity";
+import {
+  isUniqueViolation,
+  paymentHashRecorded,
+  TRANSFER_ALREADY_RECORDED,
+  verificationFailureStatus,
+} from "@/lib/server/payments";
 
 /**
  * POST /api/circles/[id]/send
@@ -56,17 +62,18 @@ export async function POST(
       walletId: sender.circle_wallet_id,
       destinationAddress: recipient.wallet_address,
       amountUsdc: amount,
+      isRecorded: paymentHashRecorded,
     });
     txHash = result.txHash;
   } catch (e) {
     console.error(`Circle send to ${recipient.username} verification failed:`, e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Transfer could not be verified" },
-      { status: 502 }
+      { status: verificationFailureStatus(e) }
     );
   }
 
-  const { data: payment } = await admin
+  const { data: payment, error: paymentError } = await admin
     .from("payments")
     .insert({
       from_user_id: sender.id,
@@ -81,11 +88,20 @@ export async function POST(
     .select()
     .single();
 
+  // A failed insert means this transfer is already recorded (or could not be saved). Either way
+  // the recipient must not be told about a payment that was not recorded here.
+  if (paymentError || !payment) {
+    if (isUniqueViolation(paymentError)) {
+      return NextResponse.json({ error: TRANSFER_ALREADY_RECORDED }, { status: 409 });
+    }
+    return NextResponse.json({ error: paymentError?.message ?? "Could not record the payment" }, { status: 500 });
+  }
+
   await recordActivity([
     {
       user_id: recipient.id,
       type: "payment_received",
-      reference_id: payment?.id,
+      reference_id: payment.id,
       actor_id: sender.id,
       amount_usdc: amount,
       note: note ?? null,

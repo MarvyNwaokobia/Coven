@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { recordActivity } from "@/lib/server/activity";
+import {
+  isUniqueViolation,
+  paymentHashRecorded,
+  TRANSFER_ALREADY_RECORDED,
+  verificationFailureStatus,
+} from "@/lib/server/payments";
 
 /**
  * POST /api/payments/[requestId]/pay - one-tap pay on a pending request.
@@ -50,17 +56,18 @@ export async function POST(
       walletId: payer.circle_wallet_id,
       destinationAddress: requester.wallet_address,
       amountUsdc: Number(request.amount_usdc),
+      isRecorded: paymentHashRecorded,
     });
     txHash = result.txHash;
   } catch (e) {
     console.error("Request payment verification failed:", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Transfer could not be verified" },
-      { status: 502 }
+      { status: verificationFailureStatus(e) }
     );
   }
 
-  const { data: payment } = await admin
+  const { data: payment, error: paymentError } = await admin
     .from("payments")
     .insert({
       from_user_id: payer.id,
@@ -74,9 +81,18 @@ export async function POST(
     .select()
     .single();
 
+  // One transfer settles one request. If this hash is already recorded, leave the request
+  // pending instead of marking it paid against a payment that belongs to something else.
+  if (paymentError || !payment) {
+    if (isUniqueViolation(paymentError)) {
+      return NextResponse.json({ error: TRANSFER_ALREADY_RECORDED }, { status: 409 });
+    }
+    return NextResponse.json({ error: paymentError?.message ?? "Could not record the payment" }, { status: 500 });
+  }
+
   await admin
     .from("payment_requests")
-    .update({ status: "paid", payment_id: payment?.id })
+    .update({ status: "paid", payment_id: payment.id })
     .eq("id", requestId);
 
   await recordActivity([
@@ -91,7 +107,7 @@ export async function POST(
     {
       user_id: payer.id,
       type: "payment_sent",
-      reference_id: payment?.id,
+      reference_id: payment.id,
       actor_id: payer.id,
       amount_usdc: request.amount_usdc,
       note: request.note,

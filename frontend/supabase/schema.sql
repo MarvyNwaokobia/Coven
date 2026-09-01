@@ -52,7 +52,7 @@ create table if not exists payments (
   fee_usdc numeric(20,6) default 0,
   note text,
   source_chain text default 'ARC',
-  tx_hash text,
+  tx_hash text unique, -- one on-chain transaction is recorded once; NULLs stay allowed
   cctp_nonce bigint,
   status text default 'completed'
     check (status in ('pending','completed','failed')),
@@ -134,7 +134,7 @@ create table if not exists goal_contributions (
   goal_id uuid references circle_goals(id) not null,
   user_id uuid references users(id) not null,
   amount_usdc numeric(20,6) not null,
-  tx_hash text,
+  tx_hash text unique, -- one contribution per on-chain transaction
   created_at timestamptz default now()
 );
 

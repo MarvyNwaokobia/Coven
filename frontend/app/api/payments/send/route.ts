@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
-import { creditPayment } from "@/lib/server/payments";
+import {
+  creditPayment,
+  isUniqueViolation,
+  paymentHashRecorded,
+  TRANSFER_ALREADY_RECORDED,
+  verificationFailureStatus,
+} from "@/lib/server/payments";
 
 /**
  * POST /api/payments/send
@@ -56,13 +62,14 @@ export async function POST(req: Request) {
         walletId: sender.circle_wallet_id,
         destinationAddress: recipient.wallet_address,
         amountUsdc: amount,
+        isRecorded: paymentHashRecorded,
       });
       recordedTxHash = verifiedHash;
     } catch (e) {
       console.error("Transfer verification failed:", e);
       return NextResponse.json(
         { error: e instanceof Error ? e.message : "Transfer could not be verified" },
-        { status: 502 }
+        { status: verificationFailureStatus(e) }
       );
     }
   } else {
@@ -90,7 +97,13 @@ export async function POST(req: Request) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    // Lost a race with another confirm of the same transfer: it is already recorded and credited.
+    if (isUniqueViolation(error)) {
+      return NextResponse.json({ error: TRANSFER_ALREADY_RECORDED }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
 
   // Only credit a payment that actually settled. Pending cross-chain sends
   // are credited by /api/cctp/relay once the mint lands on Arc.

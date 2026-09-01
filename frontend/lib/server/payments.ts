@@ -47,3 +47,22 @@ export async function creditPayment(params: {
     ]),
   ]);
 }
+
+/** Postgres unique_violation: another row already holds this value. */
+export function isUniqueViolation(error: { code?: string } | null | undefined): boolean {
+  return error?.code === "23505";
+}
+
+/** True when a payment has already been recorded for this transaction hash. */
+export async function paymentHashRecorded(txHash: string): Promise<boolean> {
+  const { data } = await getSupabaseAdmin().from("payments").select("id").eq("tx_hash", txHash).maybeSingle();
+  return Boolean(data);
+}
+
+/** Must match the message resolveAndVerifyRecentTransfer throws when every matching transfer is already recorded. */
+export const TRANSFER_ALREADY_RECORDED = "This transfer has already been recorded";
+
+/** 409 when the transfer was already recorded (a replay), 502 for any other verification failure. */
+export function verificationFailureStatus(error: unknown): number {
+  return error instanceof Error && error.message === TRANSFER_ALREADY_RECORDED ? 409 : 502;
+}

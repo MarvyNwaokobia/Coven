@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { recordActivity } from "@/lib/server/activity";
+import {
+  isUniqueViolation,
+  paymentHashRecorded,
+  TRANSFER_ALREADY_RECORDED,
+  verificationFailureStatus,
+} from "@/lib/server/payments";
 
 /**
  * POST /api/splits/[splitId]/pay - member pays their share to the creator.
@@ -51,17 +57,18 @@ export async function POST(
       walletId: member.circle_wallet_id,
       destinationAddress: split.creator.wallet_address,
       amountUsdc: Number(share.amount_owed_usdc),
+      isRecorded: paymentHashRecorded,
     });
     txHash = result.txHash;
   } catch (e) {
     console.error("Split payment verification failed:", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Transfer could not be verified" },
-      { status: 502 }
+      { status: verificationFailureStatus(e) }
     );
   }
 
-  const { data: payment } = await admin
+  const { data: payment, error: paymentError } = await admin
     .from("payments")
     .insert({
       from_user_id: member.id,
@@ -76,9 +83,18 @@ export async function POST(
     .select()
     .single();
 
+  // One transfer pays one share. If this hash is already recorded, the share stays unpaid
+  // instead of being marked paid against someone else's payment.
+  if (paymentError || !payment) {
+    if (isUniqueViolation(paymentError)) {
+      return NextResponse.json({ error: TRANSFER_ALREADY_RECORDED }, { status: 409 });
+    }
+    return NextResponse.json({ error: paymentError?.message ?? "Could not record the payment" }, { status: 500 });
+  }
+
   await admin
     .from("split_members")
-    .update({ paid: true, payment_id: payment?.id, paid_at: new Date().toISOString() })
+    .update({ paid: true, payment_id: payment.id, paid_at: new Date().toISOString() })
     .eq("split_id", splitId)
     .eq("user_id", member.id);
 

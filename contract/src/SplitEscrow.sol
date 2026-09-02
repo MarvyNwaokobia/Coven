@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,13 +10,23 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
  * @notice Escrow for group bill splits. Members contribute their share.
  *         Funds release to the recipient (e.g. the person who paid the
  *         restaurant) when all members have paid. The creator can cancel an
- *         open split at any time, and anyone can expire it after the deadline;
- *         both paths refund members who already paid.
+ *         open split at any time, and anyone can expire it after the deadline.
+ *         Both close the split; each member who already paid then claims their
+ *         own refund with claimRefund.
+ *
+ *         Refunds are pulled, not pushed. A push loop over every member reverts
+ *         as a whole if one transfer fails, so a single blocklisted member could
+ *         trap everyone else's refund. Pulled, that member is only stuck with
+ *         their own.
  */
 contract SplitEscrow is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable USDC;
+
+    /// @notice Bounds the members array so nothing that walks it can run out of gas.
+    uint256 public constant MAX_MEMBERS = 50;
+    uint256 public constant MAX_DEADLINE_HOURS = 24 * 365;
 
     enum SplitStatus {
         None,
@@ -34,6 +44,7 @@ contract SplitEscrow is ReentrancyGuard {
         SplitStatus status;
         mapping(address => uint256) owed; // member → amount owed
         mapping(address => bool) paid; // member → has paid
+        mapping(address => bool) refunded; // member → has claimed their refund
         address[] members;
         string description;
     }
@@ -52,6 +63,7 @@ contract SplitEscrow is ReentrancyGuard {
     event MemberPaid(bytes32 indexed splitId, address indexed member, uint256 amount);
     event SplitComplete(bytes32 indexed splitId, address indexed recipient, uint256 amount);
     event SplitCancelled(bytes32 indexed splitId);
+    event Refunded(bytes32 indexed splitId, address indexed member, uint256 amount);
 
     error SplitNotFound();
     error AlreadyPaid();
@@ -64,6 +76,11 @@ contract SplitEscrow is ReentrancyGuard {
     error ZeroAddress();
     error ZeroAmount();
     error DuplicateMember();
+    error TooManyMembers();
+    error InvalidDeadline();
+    error SplitMismatch();
+    error SplitNotExpired();
+    error NothingToRefund();
 
     constructor(address _usdc) {
         if (_usdc == address(0)) revert ZeroAddress();
@@ -76,7 +93,7 @@ contract SplitEscrow is ReentrancyGuard {
      * @param amounts       How much each member owes (parallel array)
      * @param recipient     Who gets the money when all have paid
      * @param description   Human-readable description ("Dinner at Nkoyo")
-     * @param deadlineHours Hours until the split can be expired
+     * @param deadlineHours Hours until the split can be expired (1 to MAX_DEADLINE_HOURS)
      */
     function createSplit(
         address[] calldata members,
@@ -86,8 +103,10 @@ contract SplitEscrow is ReentrancyGuard {
         uint256 deadlineHours
     ) external returns (bytes32 splitId) {
         if (members.length == 0) revert NoMembers();
+        if (members.length > MAX_MEMBERS) revert TooManyMembers();
         if (members.length != amounts.length) revert LengthMismatch();
         if (recipient == address(0)) revert ZeroAddress();
+        if (deadlineHours == 0 || deadlineHours > MAX_DEADLINE_HOURS) revert InvalidDeadline();
 
         splitId = keccak256(abi.encodePacked(msg.sender, block.timestamp, description, _nonce++));
 
@@ -112,8 +131,13 @@ contract SplitEscrow is ReentrancyGuard {
 
     /**
      * @notice Member pays their share. Auto-releases to recipient when fully collected.
+     * @dev    A split is created by one person and paid by others, so the payer
+     *         states the recipient and the amount they believe they are paying and
+     *         the call reverts if the split says otherwise. Without this the payer
+     *         only ever names an id, and whoever showed them that id decides where
+     *         their money goes.
      */
-    function pay(bytes32 splitId) external nonReentrant {
+    function pay(bytes32 splitId, address expectedRecipient, uint256 expectedAmount) external nonReentrant {
         Split storage s = splits[splitId];
         if (s.status == SplitStatus.None) revert SplitNotFound();
         if (s.status != SplitStatus.Open) revert SplitNotOpen();
@@ -121,13 +145,15 @@ contract SplitEscrow is ReentrancyGuard {
         if (s.paid[msg.sender]) revert AlreadyPaid();
 
         uint256 amount = s.owed[msg.sender];
+        if (s.recipient != expectedRecipient || amount != expectedAmount) revert SplitMismatch();
+
         s.paid[msg.sender] = true;
         s.collected += amount;
 
         USDC.safeTransferFrom(msg.sender, address(this), amount);
         emit MemberPaid(splitId, msg.sender, amount);
 
-        if (s.collected >= s.totalAmount) {
+        if (s.collected == s.totalAmount) {
             s.status = SplitStatus.Complete;
             USDC.safeTransfer(s.recipient, s.collected);
             emit SplitComplete(splitId, s.recipient, s.collected);
@@ -135,36 +161,44 @@ contract SplitEscrow is ReentrancyGuard {
     }
 
     /**
-     * @notice Creator cancels an open split; members who paid are refunded.
+     * @notice Creator cancels an open split. Members who paid claim their refunds.
      */
-    function cancel(bytes32 splitId) external nonReentrant {
+    function cancel(bytes32 splitId) external {
         Split storage s = splits[splitId];
         if (s.status == SplitStatus.None) revert SplitNotFound();
         if (s.creator != msg.sender) revert NotCreator();
-        _expire(splitId, s);
+        _close(splitId, s);
     }
 
     /**
-     * @notice Anyone can expire a split after its deadline; paid members are refunded.
+     * @notice Anyone can expire a split after its deadline. Members who paid claim their refunds.
      */
-    function expire(bytes32 splitId) external nonReentrant {
+    function expire(bytes32 splitId) external {
         Split storage s = splits[splitId];
         if (s.status == SplitStatus.None) revert SplitNotFound();
         if (block.timestamp < s.deadline) revert DeadlineNotPassed();
-        _expire(splitId, s);
+        _close(splitId, s);
     }
 
-    function _expire(bytes32 splitId, Split storage s) private {
+    /**
+     * @notice Claim your own refund from a cancelled or expired split.
+     */
+    function claimRefund(bytes32 splitId) external nonReentrant {
+        Split storage s = splits[splitId];
+        if (s.status == SplitStatus.None) revert SplitNotFound();
+        if (s.status != SplitStatus.Expired) revert SplitNotExpired();
+        if (!s.paid[msg.sender] || s.refunded[msg.sender]) revert NothingToRefund();
+
+        s.refunded[msg.sender] = true;
+        uint256 amount = s.owed[msg.sender];
+        USDC.safeTransfer(msg.sender, amount);
+
+        emit Refunded(splitId, msg.sender, amount);
+    }
+
+    function _close(bytes32 splitId, Split storage s) private {
         if (s.status != SplitStatus.Open) revert SplitNotOpen();
         s.status = SplitStatus.Expired;
-
-        for (uint256 i = 0; i < s.members.length; i++) {
-            address member = s.members[i];
-            if (s.paid[member]) {
-                USDC.safeTransfer(member, s.owed[member]);
-            }
-        }
-
         emit SplitCancelled(splitId);
     }
 
@@ -192,6 +226,10 @@ contract SplitEscrow is ReentrancyGuard {
 
     function hasMemberPaid(bytes32 splitId, address member) external view returns (bool) {
         return splits[splitId].paid[member];
+    }
+
+    function hasClaimedRefund(bytes32 splitId, address member) external view returns (bool) {
+        return splits[splitId].refunded[member];
     }
 
     function getMembers(bytes32 splitId) external view returns (address[] memory) {

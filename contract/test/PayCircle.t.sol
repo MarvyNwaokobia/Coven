@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import { Test } from "forge-std/Test.sol";
 import { PayCircle } from "../src/PayCircle.sol";
 import { MockUSDC } from "./mocks/MockUSDC.sol";
+import { BlocklistUSDC } from "./mocks/BlocklistUSDC.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PayCircleTest is Test {
     PayCircle payCircle;
@@ -33,10 +35,15 @@ contract PayCircleTest is Test {
         vm.prank(alice);
         payCircle.send(bob, 100 * ONE_USDC, "for coffee");
 
-        // 0.5% fee = 0.5 USDC
+        // 0.5% fee = 0.5 USDC, held here until withdrawn
         assertEq(usdc.balanceOf(bob), 99_500_000);
-        assertEq(usdc.balanceOf(treasury), 500_000);
+        assertEq(usdc.balanceOf(address(payCircle)), 500_000);
+        assertEq(payCircle.accruedFees(), 500_000);
         assertEq(usdc.balanceOf(alice), 9_900 * ONE_USDC);
+
+        payCircle.withdrawFees();
+        assertEq(usdc.balanceOf(treasury), 500_000);
+        assertEq(payCircle.accruedFees(), 0);
     }
 
     function test_send_emitsEvent() public {
@@ -85,6 +92,8 @@ contract PayCircleTest is Test {
         assertEq(usdc.balanceOf(carol), 20 * ONE_USDC);
         assertEq(usdc.balanceOf(dave), 30 * ONE_USDC);
         // 0.25% of 60 USDC = 0.15 USDC
+        assertEq(payCircle.accruedFees(), 150_000);
+        payCircle.withdrawFees();
         assertEq(usdc.balanceOf(treasury), 150_000);
     }
 
@@ -140,6 +149,8 @@ contract PayCircleTest is Test {
 
         assertEq(fee, ONE_USDC); // 1%
         assertEq(net, 99 * ONE_USDC);
+        assertEq(payCircle.accruedFees(), ONE_USDC);
+        payCircle.withdrawFees();
         assertEq(usdc.balanceOf(treasury), ONE_USDC);
     }
 
@@ -167,6 +178,110 @@ contract PayCircleTest is Test {
         amount = bound(amount, 1, 10_000 * ONE_USDC);
         vm.prank(alice);
         payCircle.send(bob, amount, "");
-        assertEq(usdc.balanceOf(bob) + usdc.balanceOf(treasury) + usdc.balanceOf(alice), 10_000 * ONE_USDC);
+        assertEq(usdc.balanceOf(bob) + usdc.balanceOf(address(payCircle)) + usdc.balanceOf(alice), 10_000 * ONE_USDC);
+        assertEq(usdc.balanceOf(address(payCircle)), payCircle.accruedFees());
+    }
+
+    // ---- fee behaviour ----
+
+    /// Fees round down: below 200 base units a send pays no fee. The fee path is also optional
+    /// (a plain USDC transfer skips this contract), so fee enforcement is an off-chain concern.
+    function test_send_dustAmountsPayNoFee() public {
+        vm.prank(alice);
+        payCircle.send(bob, 199, "dust"); // 199 * 50 / 10_000 = 0
+        assertEq(payCircle.accruedFees(), 0);
+        assertEq(usdc.balanceOf(bob), 199);
+    }
+
+    function test_withdrawFees_revertsWhenNothingToWithdraw() public {
+        vm.expectRevert(PayCircle.NoFees.selector);
+        payCircle.withdrawFees();
+    }
+
+    function test_withdrawFees_isPermissionlessButAlwaysPaysTheTreasury() public {
+        vm.prank(alice);
+        payCircle.send(bob, 100 * ONE_USDC, "");
+        vm.prank(dave); // an unrelated account triggers it
+        uint256 amount = payCircle.withdrawFees();
+        assertEq(amount, 500_000);
+        assertEq(usdc.balanceOf(treasury), 500_000);
+        assertEq(usdc.balanceOf(dave), 0);
+    }
+
+    // ---- PC-2: an unusable treasury cannot brick payments ----
+
+    function test_blocklistedTreasuryDoesNotBlockPaymentsOnlyWithdrawal() public {
+        BlocklistUSDC token = new BlocklistUSDC();
+        PayCircle pc = new PayCircle(address(token), treasury, owner);
+        token.mint(alice, 1_000 * ONE_USDC);
+        vm.prank(alice);
+        token.approve(address(pc), type(uint256).max);
+
+        token.setBlocked(treasury, true);
+
+        // every fee-bearing path still works (was: all of them reverted)
+        vm.startPrank(alice);
+        pc.send(bob, 100 * ONE_USDC, "x");
+        pc.collectOfframpFee(100 * ONE_USDC);
+        vm.stopPrank();
+        assertEq(token.balanceOf(bob), 99_500_000);
+
+        // withdrawing to the blocked treasury fails, and the fees stay safe in the contract
+        vm.expectRevert(bytes("blocked"));
+        pc.withdrawFees();
+        assertEq(pc.accruedFees(), 1_500_000);
+
+        // the owner points fees at a working address and they can be withdrawn
+        vm.prank(owner);
+        pc.setFeeTreasury(carol);
+        pc.withdrawFees();
+        assertEq(token.balanceOf(carol), 1_500_000);
+        assertEq(pc.accruedFees(), 0);
+    }
+
+    // ---- PC-3: ownership ----
+
+    function test_ownershipMovesInTwoStepsAndCannotBeRenounced() public {
+        vm.prank(owner);
+        payCircle.transferOwnership(bob);
+        assertEq(payCircle.owner(), owner); // still the owner until bob accepts
+        assertEq(payCircle.pendingOwner(), bob);
+
+        vm.prank(bob);
+        payCircle.acceptOwnership();
+        assertEq(payCircle.owner(), bob);
+
+        vm.prank(bob);
+        vm.expectRevert(PayCircle.RenounceDisabled.selector);
+        payCircle.renounceOwnership();
+        assertEq(payCircle.owner(), bob); // still owned: the admin key cannot be thrown away
+
+        // a proposal to a wrong address cannot take effect unless that address accepts
+        vm.prank(bob);
+        payCircle.transferOwnership(address(0xdead));
+        vm.prank(bob);
+        payCircle.setFeeTreasury(carol); // bob remains fully in control
+        assertEq(payCircle.feeTreasury(), carol);
+    }
+
+    function test_onlyPendingOwnerCanAccept() public {
+        vm.prank(owner);
+        payCircle.transferOwnership(bob);
+        vm.prank(carol);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, carol));
+        payCircle.acceptOwnership();
+    }
+
+    function test_splitPayment_revertsOnTooManyRecipients() public {
+        uint256 n = payCircle.MAX_RECIPIENTS() + 1;
+        address[] memory recipients = new address[](n);
+        uint256[] memory amounts = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            recipients[i] = address(uint160(0x2000 + i));
+            amounts[i] = ONE_USDC;
+        }
+        vm.prank(alice);
+        vm.expectRevert(PayCircle.TooManyRecipients.selector);
+        payCircle.splitPayment(recipients, amounts, "");
     }
 }

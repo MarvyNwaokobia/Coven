@@ -15,14 +15,20 @@ export const PAYCIRCLE_ABI = [
 
 export const SPLIT_ESCROW_ABI = [
   "function createSplit(address[] members, uint256[] amounts, address recipient, string description, uint256 deadlineHours) returns (bytes32)",
-  "function pay(bytes32 splitId)",
+  "function pay(bytes32 splitId, address expectedRecipient, uint256 expectedAmount)",
   "function cancel(bytes32 splitId)",
   "function expire(bytes32 splitId)",
+  "function claimRefund(bytes32 splitId)",
+  "function hasClaimedRefund(bytes32 splitId, address member) view returns (bool)",
   "function getSplit(bytes32 splitId) view returns (address creator, address recipient, uint256 totalAmount, uint256 collected, uint256 deadline, uint8 status, string description)",
   "function getMemberOwed(bytes32 splitId, address member) view returns (uint256)",
   "function hasMemberPaid(bytes32 splitId, address member) view returns (bool)",
   "function getMembers(bytes32 splitId) view returns (address[])",
   "event SplitCreated(bytes32 indexed splitId, address indexed creator, address indexed recipient, uint256 total, uint256 deadline, string description)",
+  "event MemberPaid(bytes32 indexed splitId, address indexed member, uint256 amount)",
+  "event SplitComplete(bytes32 indexed splitId, address indexed recipient, uint256 amount)",
+  "event SplitCancelled(bytes32 indexed splitId)",
+  "event Refunded(bytes32 indexed splitId, address indexed member, uint256 amount)",
 ];
 
 export const GOAL_POOL_ABI = [

@@ -35,6 +35,10 @@ export async function POST(
   if (split.status !== "open") {
     return NextResponse.json({ error: `Split is ${split.status}` }, { status: 409 });
   }
+  // A split held in escrow is paid into the contract, never straight to the creator.
+  if (split.contract_split_id) {
+    return NextResponse.json({ error: "This split is paid through escrow" }, { status: 409 });
+  }
 
   const { data: share } = await admin
     .from("split_members")

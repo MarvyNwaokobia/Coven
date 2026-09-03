@@ -29,20 +29,21 @@ export async function getGoalForMember(
   return { goal, memberIds };
 }
 
-/** Parse a named event's args out of a GoalPool transaction receipt fetched by hash. */
+/** Parse a named event's args out of a transaction receipt fetched by hash. The emitter defaults to GoalPool. */
 export async function parseEventFromTx<T extends Record<string, unknown>>(
   txHash: string,
   eventFragment: string,
-  eventName: string
+  eventName: string,
+  emitterAddress: string = goalPoolAddress()
 ): Promise<T | null> {
   const provider = getArcProvider();
   const receipt = await provider.getTransactionReceipt(txHash);
   if (!receipt) return null;
 
   const iface = new ethers.Interface([eventFragment]);
-  const emitter = goalPoolAddress().toLowerCase();
+  const emitter = emitterAddress.toLowerCase();
   for (const log of receipt.logs) {
-    // Only trust events emitted by GoalPool itself, not a look-alike from another contract.
+    // Only trust events emitted by the expected contract, not a look-alike from another one.
     if (log.address.toLowerCase() !== emitter) continue;
     try {
       const parsed = iface.parseLog(log);

@@ -27,6 +27,7 @@ import {
   goalAction,
   type GoalAction,
 } from "@/lib/circle/goals";
+import { createSplit as createEscrowSplit, paySplitShare, splitAction, type SplitAction } from "@/lib/circle/splits";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC, relativeTime } from "@/lib/format";
 import type { Circle, Split, Payment, User, Goal } from "@/lib/types";
@@ -84,13 +85,11 @@ export default function CircleDetailPage() {
     setBusy(true);
     setError("");
     try {
-      await api("/api/splits/create", {
-        json: {
-          memberUsernames: others.map((m) => m.username),
-          amounts: others.map(() => share),
-          description,
-          circleId: id,
-        },
+      await createEscrowSplit({
+        circleId: id,
+        memberUsernames: others.map((m) => m.username),
+        amounts: others.map(() => share),
+        description,
       });
       setShowSplit(false);
       setDescription("");
@@ -107,8 +106,12 @@ export default function CircleDetailPage() {
     setPayingSplit(splitId);
     setError("");
     try {
-      await approveTransfer({ kind: "split", splitId });
-      await api(`/api/splits/${splitId}/pay`, { json: {} });
+      if (data?.splits.find((s) => s.id === splitId)?.contract_split_id) {
+        await paySplitShare(splitId); // held in escrow: approve if needed, then pay into the contract
+      } else {
+        await approveTransfer({ kind: "split", splitId }); // legacy split: a direct transfer to the creator
+        await api(`/api/splits/${splitId}/pay`, { json: {} });
+      }
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Payment failed");
@@ -136,6 +139,19 @@ export default function CircleDetailPage() {
       setGoalError(e instanceof Error ? e.message : "Could not create goal");
     } finally {
       setGoalBusy(false);
+    }
+  }
+
+  async function handleSplitAction(splitId: string, action: SplitAction) {
+    setPayingSplit(splitId);
+    setError("");
+    try {
+      await splitAction(splitId, action);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That did not go through");
+    } finally {
+      setPayingSplit(null);
     }
   }
 
@@ -233,7 +249,15 @@ export default function CircleDetailPage() {
   }
 
   const { circle, splits, goals, payments } = data;
+  const creatorName = (s: Split) => circle.members.find((m) => m.id === s.creator_id)?.username ?? "the creator";
   const openSplits = splits.filter((s) => s.status === "open");
+  // A cancelled or expired escrow split where this member paid and has not yet claimed their refund.
+  const refundableSplits = splits.filter(
+    (s) =>
+      s.status === "cancelled" &&
+      s.contract_split_id &&
+      s.members?.some((m) => m.user_id === user?.id && m.paid && !m.refunded_at)
+  );
   const openGoals = goals.filter((g) => g.status === "open");
   const dissolvedGoals = goals.filter((g) => g.status === "cancelled");
 
@@ -350,7 +374,7 @@ export default function CircleDetailPage() {
         )}
 
         {/* -------------------------------------------- Splits and goals */}
-        {(openSplits.length > 0 || openGoals.length > 0 || dissolvedGoals.length > 0) && (
+        {(openSplits.length > 0 || refundableSplits.length > 0 || openGoals.length > 0 || dissolvedGoals.length > 0) && (
           <div className="grid gap-4 lg:grid-cols-2">
             {openSplits.map((s) => {
               const pct = Math.round(
@@ -400,6 +424,39 @@ export default function CircleDetailPage() {
                     >
                       Pay your share · {formatUSDC(mine.amount_owed_usdc)}
                     </Button>
+                  )}
+
+                  {s.contract_split_id && (
+                    <div className="space-y-2 border-t border-line pt-3.5">
+                      <p className="text-xs leading-relaxed text-ink-mute">
+                        Held in escrow and paid out to @{creatorName(s)} once everyone has paid.
+                        {s.deadline
+                          ? ` If it is not complete by ${new Date(s.deadline).toLocaleDateString()}, anyone who paid gets their money back.`
+                          : ""}
+                      </p>
+                      <div className="flex gap-2">
+                        {s.deadline && new Date(s.deadline).getTime() <= Date.now() && (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            loading={payingSplit === s.id}
+                            onClick={() => handleSplitAction(s.id, "expire")}
+                          >
+                            End split and refund
+                          </Button>
+                        )}
+                        {s.creator_id === user?.id && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            loading={payingSplit === s.id}
+                            onClick={() => handleSplitAction(s.id, "cancel")}
+                          >
+                            Cancel split
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </Card>
               );
@@ -585,6 +642,30 @@ export default function CircleDetailPage() {
                 </Card>
               );
             })}
+
+            {refundableSplits.map((s) => (
+              <Card key={s.id} className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-ink">{s.description}</p>
+                    <p className="text-xs text-ink-mute">Bill split</p>
+                  </div>
+                  <StatusChip status={s.status} />
+                </div>
+                <p className="text-xs leading-relaxed text-ink-soft">
+                  This split did not complete. Your payment is waiting for you.
+                </p>
+                <Button
+                  fullWidth
+                  size="sm"
+                  variant="secondary"
+                  loading={payingSplit === s.id}
+                  onClick={() => handleSplitAction(s.id, "claim-refund")}
+                >
+                  Claim my refund
+                </Button>
+              </Card>
+            ))}
 
             {dissolvedGoals.map((g) => (
               <Card key={g.id} className="space-y-3">

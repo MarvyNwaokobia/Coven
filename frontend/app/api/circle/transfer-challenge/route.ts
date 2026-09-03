@@ -73,12 +73,15 @@ export async function POST(req: Request) {
     } else if (body.kind === "split") {
       const { data: split } = await admin
         .from("splits")
-        .select("status, creator:users!splits_creator_id_fkey(wallet_address)")
+        .select("status, contract_split_id, creator:users!splits_creator_id_fkey(wallet_address)")
         .eq("id", body.splitId)
         .maybeSingle();
       if (!split) return NextResponse.json({ error: "Split not found" }, { status: 404 });
       if (split.status !== "open") {
         return NextResponse.json({ error: `Split is ${split.status}` }, { status: 409 });
+      }
+      if (split.contract_split_id) {
+        return NextResponse.json({ error: "This split is paid through escrow" }, { status: 409 });
       }
       const { data: share } = await admin
         .from("split_members")

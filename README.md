@@ -108,7 +108,7 @@ Three contracts, each handling a specific piece of the money-movement logic on-c
 | Contract | Address |
 |---|---|
 | PayCircle | [`0x5f4c5E9DA66935732e464F447d15E37E33E2daA4`](https://explorer.testnet.arc.io/address/0x5f4c5E9DA66935732e464F447d15E37E33E2daA4) |
-| SplitEscrow | [`0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E`](https://explorer.testnet.arc.io/address/0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E) |
+| SplitEscrow | [`0x2AD815252A08Ca9E3081fBb40f47f1bF0117d6c7`](https://explorer.testnet.arc.io/address/0x2AD815252A08Ca9E3081fBb40f47f1bF0117d6c7) |
 | GoalPool | [`0x49D4F073a25172209333aEB5BFFB42E58a57e9f5`](https://explorer.testnet.arc.io/address/0x49D4F073a25172209333aEB5BFFB42E58a57e9f5) |
 | USDC (ERC-20, 6dp) | `0x3600000000000000000000000000000000000000` |
 

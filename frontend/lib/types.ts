@@ -75,6 +75,8 @@ export interface SplitMember {
   paid: boolean;
   payment_id: string | null;
   paid_at: string | null;
+  /** When the member claimed their refund from a cancelled or expired on-chain split. */
+  refunded_at: string | null;
   user?: User;
 }
 

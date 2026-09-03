@@ -123,12 +123,16 @@ ARC_RPC_URL="https://rpc.testnet.arc.network"
 DEPLOYER_PRIVATE_KEY="0x..."
 ARC_USDC_ADDRESS="0x3600000000000000000000000000000000000000"
 PLATFORM_FEE_WALLET="0x..."
+PAYCIRCLE_OWNER="0x..."   # required by Deploy.s.sol; must NOT be the deploying key or any key on a server
 ```
 
 ```bash
 # Fund the deployer: https://faucet.circle.com → Arc Testnet → testnet USDC (this IS the gas token)
 
-# Deploy both contracts via the repo's script (contract/script/Deploy.s.sol)
+# Each contract has its own script so any can be redeployed without touching the others:
+#   script/Deploy.s.sol            PayCircle (needs PAYCIRCLE_OWNER)
+#   script/DeploySplitEscrow.s.sol SplitEscrow
+#   script/DeployGoalPool.s.sol    GoalPool (optional GOAL_EXIT_DELAY_DAYS, default 30)
 # --legacy is required: forge doesn't have chain 5042002 in its built-in
 # EIP-1559 support list yet and errors ("Chain 5042002 not supported")
 # without it. Arc accepts legacy (type 0) txs fine.
@@ -147,7 +151,7 @@ forge verify-contract <PAYCIRCLE_ADDRESS> src/PayCircle.sol:PayCircle \
   --chain-id 5042002 \
   --verifier blockscout \
   --verifier-url https://explorer.testnet.arc.io/api/ \
-  --constructor-args $(cast abi-encode "constructor(address,address,address)" $ARC_USDC_ADDRESS $PLATFORM_FEE_WALLET $DEPLOYER_ADDRESS)
+  --constructor-args $(cast abi-encode "constructor(address,address,address)" $ARC_USDC_ADDRESS $PLATFORM_FEE_WALLET $PAYCIRCLE_OWNER)
 
 forge verify-contract <SPLITESCROW_ADDRESS> src/SplitEscrow.sol:SplitEscrow \
   --chain-id 5042002 \
@@ -164,13 +168,17 @@ cast call <PAYCIRCLE_ADDRESS> "feeTreasury()(address)" --rpc-url $ARC_RPC_URL
 | Contract | Address |
 |---|---|
 | PayCircle | `0x5f4c5E9DA66935732e464F447d15E37E33E2daA4` |
-| SplitEscrow | `0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E` |
+| SplitEscrow v2 (deployed 2026-09-22) | `0x2AD815252A08Ca9E3081fBb40f47f1bF0117d6c7` |
 | GoalPool v2 (deployed 2026-09-21, 30-day exit delay) | `0x49D4F073a25172209333aEB5BFFB42E58a57e9f5` |
 | Fee treasury | `0x5Ab64c56Df2d01A0c76534E01b6a06Cd3d79391C` |
 
 These are wired into `frontend/.env.example` as `NEXT_PUBLIC_PAYCIRCLE_CONTRACT` / `NEXT_PUBLIC_SPLIT_ESCROW_CONTRACT` / `NEXT_PUBLIC_GOAL_POOL_CONTRACT`. Redeploy and update both places if the contracts change. GoalPool has its own deploy script (`contract/script/DeployGoalPool.s.sol`) so it can be redeployed without touching the other two.
 
 The first GoalPool (`0xB496516bAAb570d73208a5210e4E95381751f428`, deployed 2026-07-25) is retired. It never held any funds. v2 fixes contributions being stranded while a withdrawal is pending, binds an approval to the request's recipient and amount, and adds a time-locked exit so one absent member cannot freeze a pool. Set the exit delay at deploy time with `GOAL_EXIT_DELAY_DAYS` (default 30, minimum 1); it is immutable afterwards, and the app's `GOAL_EXIT_DAYS` in `app/circles/[id]/page.tsx` must match it.
+
+The first SplitEscrow (`0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E`, deployed 2026-07-20) is retired; it never held funds and nothing in the app calls it. v2 pulls refunds instead of pushing them (one blocklisted member can no longer trap everyone's refund), makes `pay` take the recipient and amount the payer expects and revert on any mismatch, and bounds the member count and deadline. The app now creates splits through it (`/api/splits/create-challenge` and `create-confirm`), so a bill split is held in escrow until every member has paid.
+
+PayCircle at `0x5f4c5E9DA66935732e464F447d15E37E33E2daA4` is the original deployment and is **not used by the app**. Its owner is the deployer key, which is also the server's relayer key, so nothing should route fees through it. The source has since been fixed (two-step, non-renounceable ownership; fees accrued in the contract and withdrawn with `withdrawFees` so a blocklisted treasury cannot block payments) but v2 is not deployed: it needs a `PAYCIRCLE_OWNER` address that is not a server key. Nothing in the app calls PayCircle, so there is no reason to deploy it until something does.
 
 ---
 

@@ -77,7 +77,7 @@ create table if not exists payment_requests (
 -- Bill splits
 create table if not exists splits (
   id uuid primary key default gen_random_uuid(),
-  contract_split_id text,
+  contract_split_id text unique, -- bytes32 splitId from SplitEscrow.createSplit; null = legacy off-chain split
   creator_id uuid references users(id) not null,
   circle_id uuid references circles(id),
   total_amount_usdc numeric(20,6) not null,
@@ -97,6 +97,7 @@ create table if not exists split_members (
   paid boolean default false,
   payment_id uuid references payments(id),
   paid_at timestamptz,
+  refunded_at timestamptz, -- set when the member claims their refund from a cancelled or expired escrow split
   primary key (split_id, user_id)
 );
 

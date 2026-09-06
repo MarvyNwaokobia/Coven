@@ -167,7 +167,7 @@ cast call <PAYCIRCLE_ADDRESS> "feeTreasury()(address)" --rpc-url $ARC_RPC_URL
 
 | Contract | Address |
 |---|---|
-| PayCircle | `0x5f4c5E9DA66935732e464F447d15E37E33E2daA4` |
+| PayCircle v2 (deployed 2026-09-22) | `0xA55FD28Ef3dce9db4DF48d514aeab08A4b1b968f` |
 | SplitEscrow v2 (deployed 2026-09-22) | `0x2AD815252A08Ca9E3081fBb40f47f1bF0117d6c7` |
 | GoalPool v2 (deployed 2026-09-21, 30-day exit delay) | `0x49D4F073a25172209333aEB5BFFB42E58a57e9f5` |
 | Fee treasury | `0x5Ab64c56Df2d01A0c76534E01b6a06Cd3d79391C` |
@@ -178,7 +178,7 @@ The first GoalPool (`0xB496516bAAb570d73208a5210e4E95381751f428`, deployed 2026-
 
 The first SplitEscrow (`0x72AC36A822746a51b0Ff03Df15df19B3E4B5536E`, deployed 2026-07-20) is retired; it never held funds and nothing in the app calls it. v2 pulls refunds instead of pushing them (one blocklisted member can no longer trap everyone's refund), makes `pay` take the recipient and amount the payer expects and revert on any mismatch, and bounds the member count and deadline. The app now creates splits through it (`/api/splits/create-challenge` and `create-confirm`), so a bill split is held in escrow until every member has paid.
 
-PayCircle at `0x5f4c5E9DA66935732e464F447d15E37E33E2daA4` is the original deployment and is **not used by the app**. Its owner is the deployer key, which is also the server's relayer key, so nothing should route fees through it. The source has since been fixed (two-step, non-renounceable ownership; fees accrued in the contract and withdrawn with `withdrawFees` so a blocklisted treasury cannot block payments) but v2 is not deployed: it needs a `PAYCIRCLE_OWNER` address that is not a server key. Nothing in the app calls PayCircle, so there is no reason to deploy it until something does.
+The first PayCircle (`0x5f4c5E9DA66935732e464F447d15E37E33E2daA4`, deployed 2026-07-20) is retired. Its owner was the deployer key, which is also the server's relayer key, so anyone who obtained that key could redirect every fee. It never held funds and nothing in the app calls it. v2 accrues fees in the contract and pays them out with `withdrawFees` (a treasury that cannot receive USDC no longer blocks `send`, `splitPayment` or `collectOfframpFee`), moves ownership in two steps (`transferOwnership`, then `acceptOwnership` by the new owner), disables `renounceOwnership`, and caps group payments at 50 recipients. Owner: the collection wallet `0x1F7F046F2a2a603Fa30D5340Aa3451Bedd1ed560` (not a server key). Fee treasury: `0x5Ab64c56Df2d01A0c76534E01b6a06Cd3d79391C`. Nothing in the app calls PayCircle yet, so no fees flow through it.
 
 ---
 

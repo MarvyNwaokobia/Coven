@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --import ./tests/helpers/register.mjs --experimental-transform-types --no-warnings --test-reporter=spec --test tests/*.test.mjs"
   },
   "dependencies": {
     "@cctp-sdk/core": "^0.1.3",

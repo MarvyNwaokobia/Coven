@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { decrypt } from "@/lib/crypto";
-import { initiateOfframp, getExchangeRate, BankDetails } from "@/lib/yellowcard/offramp";
+import { initiateOfframp, getExchangeRate, type BankDetails } from "@/lib/yellowcard/offramp";
 import { recordActivity } from "@/lib/server/activity";
 import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
 import { offrampCollectionAddress, offrampCredentialsConfigured, roundUsdc } from "@/lib/server/offramp";

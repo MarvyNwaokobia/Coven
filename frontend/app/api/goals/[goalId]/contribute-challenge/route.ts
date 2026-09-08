@@ -3,16 +3,18 @@ import { getAuthedUser } from "@/lib/supabase";
 import { createContractExecutionChallenge, getCircleUserToken, getUsdcAllowance } from "@/lib/circle/wallets";
 import { getGoalForMember, goalPoolAddress, GOAL_STATUS, readGoalState, usdcBaseUnits } from "@/lib/server/goals";
 
-const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
-
 /**
  * POST /api/goals/[goalId]/contribute-challenge - body: { amountUsdc }
  * Contributions call the GoalPool contract directly (funds must sit in
  * escrow, not a wallet anyone can unilaterally drain), so this is a
- * two-step contract-execution flow: an approve() first if allowance is
- * insufficient, then contribute() once it is. The client re-calls this
- * route after each step; `step` in the response tells it which challenge
- * it just got.
+ * two-step contract-execution flow: an approve() for exactly this
+ * contribution first if the allowance is short, then contribute() once it
+ * is. Approving only the amount needed, rather than an unlimited amount,
+ * means a bigger contribution later may ask for another approval, which is
+ * the tradeoff for never leaving a standing allowance GoalPool could draw
+ * on beyond what was actually approved for. The client re-calls this route
+ * after each step; `step` in the response tells it which challenge it just
+ * got.
  */
 export async function POST(
   req: Request,
@@ -64,7 +66,7 @@ export async function POST(
         walletId: user.circle_wallet_id,
         contractAddress: process.env.ARC_USDC_ADDRESS!,
         abiFunctionSignature: "approve(address,uint256)",
-        abiParameters: [goalPoolAddress(), MAX_UINT256],
+        abiParameters: [goalPoolAddress(), amountBase],
       });
       return NextResponse.json({ step: "approve", userToken, encryptionKey, challengeId });
     }

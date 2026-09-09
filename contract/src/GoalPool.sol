@@ -6,6 +6,29 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
+ * @title GoalCustody
+ * @notice Holds one goal's USDC. A blocklist on one goal's custody address
+ *         (or on GoalPool itself) cannot freeze any other goal's funds,
+ *         because each goal only ever moves money through its own contract.
+ */
+contract GoalCustody {
+    using SafeERC20 for IERC20;
+
+    IERC20 private immutable _TOKEN;
+    address private immutable _CONTROLLER;
+
+    constructor(IERC20 token_) {
+        _TOKEN = token_;
+        _CONTROLLER = msg.sender;
+    }
+
+    function release(address recipient, uint256 amount) external {
+        require(msg.sender == _CONTROLLER, "not controller");
+        _TOKEN.safeTransfer(recipient, amount);
+    }
+}
+
+/**
  * @title GoalPool
  * @notice Group savings pool for a Circle. Unlike SplitEscrow (fixed
  *         per-member shares, auto-release to one recipient once the total
@@ -40,6 +63,7 @@ contract GoalPool is ReentrancyGuard {
 
     struct Goal {
         address creator;
+        GoalCustody custody;
         uint256 targetAmount;
         uint256 collected;
         GoalStatus status;
@@ -132,6 +156,7 @@ contract GoalPool is ReentrancyGuard {
 
         Goal storage g = goals[goalId];
         g.creator = msg.sender;
+        g.custody = new GoalCustody(USDC);
         g.targetAmount = targetAmount;
         g.status = GoalStatus.Open;
         g.description = description;
@@ -164,7 +189,7 @@ contract GoalPool is ReentrancyGuard {
         g.contributed[msg.sender] += amount;
         g.collected += amount;
 
-        USDC.safeTransferFrom(msg.sender, address(this), amount);
+        USDC.safeTransferFrom(msg.sender, address(g.custody), amount);
         emit Contributed(goalId, msg.sender, amount, g.collected);
     }
 
@@ -295,6 +320,8 @@ contract GoalPool is ReentrancyGuard {
         if (block.timestamp < g.exitAt) revert ExitDelayNotElapsed();
 
         g.status = GoalStatus.Cancelled;
+        g.exitAt = 0;
+        g.exitInitiator = address(0);
 
         uint256 withdrawalId = g.activeWithdrawalId;
         if (withdrawalId != 0) {
@@ -320,7 +347,7 @@ contract GoalPool is ReentrancyGuard {
         if (amount == 0) revert NothingToRefund();
 
         g.contributed[msg.sender] = 0;
-        USDC.safeTransfer(msg.sender, amount);
+        g.custody.release(msg.sender, amount);
 
         emit Refunded(goalId, msg.sender, amount);
     }
@@ -329,8 +356,10 @@ contract GoalPool is ReentrancyGuard {
         w.status = WithdrawalStatus.Executed;
         g.status = GoalStatus.Withdrawn;
         g.activeWithdrawalId = 0;
+        g.exitAt = 0;
+        g.exitInitiator = address(0);
 
-        USDC.safeTransfer(w.recipient, w.amount);
+        g.custody.release(w.recipient, w.amount);
         emit WithdrawalExecuted(withdrawalId, w.goalId, w.recipient, w.amount);
     }
 
@@ -353,6 +382,11 @@ contract GoalPool is ReentrancyGuard {
 
     function getMembers(bytes32 goalId) external view returns (address[] memory) {
         return goals[goalId].members;
+    }
+
+    /// @notice The dedicated custody contract holding this goal's USDC.
+    function custodyOf(bytes32 goalId) external view returns (address) {
+        return address(goals[goalId].custody);
     }
 
     function isMember(bytes32 goalId, address account) external view returns (bool) {

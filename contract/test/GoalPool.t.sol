@@ -104,7 +104,7 @@ contract GoalPoolTest is Test {
         assertEq(collected, 400 * ONE_USDC);
         assertEq(pool.contributionOf(id, alice), 150 * ONE_USDC);
         assertEq(pool.contributionOf(id, bob), 250 * ONE_USDC);
-        assertEq(usdc.balanceOf(address(pool)), 400 * ONE_USDC);
+        assertEq(usdc.balanceOf(pool.custodyOf(id)), 400 * ONE_USDC);
     }
 
     function test_contribute_canExceedTarget() public {
@@ -421,6 +421,37 @@ contract GoalPoolTest is Test {
         assertEq(initiator, bob);
     }
 
+    function test_exit_dissolveClearsCountdown() public {
+        bytes32 id = _createGoal();
+        vm.prank(alice);
+        pool.startExit(id);
+        vm.warp(block.timestamp + EXIT_DELAY);
+        vm.prank(alice);
+        pool.dissolve(id);
+
+        (uint256 exitAt, address initiator) = pool.exitOf(id);
+        assertEq(exitAt, 0);
+        assertEq(initiator, address(0));
+    }
+
+    function test_withdrawal_executeClearsCountdown() public {
+        bytes32 id = _createGoal();
+        vm.prank(alice);
+        pool.contribute(id, 100 * ONE_USDC);
+
+        vm.prank(bob);
+        pool.startExit(id);
+
+        vm.prank(alice);
+        uint256 wid = pool.requestWithdrawal(id, outsider);
+        _approve(bob, wid);
+        _approve(carol, wid);
+
+        (uint256 exitAt, address initiator) = pool.exitOf(id);
+        assertEq(exitAt, 0);
+        assertEq(initiator, address(0));
+    }
+
     function test_exit_cannotStartTwice() public {
         bytes32 id = _createGoal();
         vm.prank(alice);
@@ -622,7 +653,8 @@ contract GoalPoolTest is Test {
         vm.prank(alice);
         pool.claimRefund(a);
 
-        assertEq(usdc.balanceOf(address(pool)), 100 * ONE_USDC + 25 * ONE_USDC); // bob's 100 in A, alice's 25 in B
+        assertEq(usdc.balanceOf(pool.custodyOf(a)), 100 * ONE_USDC); // bob's 100 in A
+        assertEq(usdc.balanceOf(pool.custodyOf(b)), 25 * ONE_USDC); // alice's 25 in B
         assertEq(pool.contributionOf(b, alice), 25 * ONE_USDC);
     }
 
@@ -703,6 +735,6 @@ contract GoalPoolBlocklistTest is Test {
 
         assertEq(usdc.balanceOf(alice), 100 * ONE_USDC);
         assertEq(usdc.balanceOf(carol), 100 * ONE_USDC);
-        assertEq(usdc.balanceOf(address(pool)), 20 * ONE_USDC); // Bob's share, waiting for him
+        assertEq(usdc.balanceOf(pool.custodyOf(id)), 20 * ONE_USDC); // Bob's share, waiting for him
     }
 }

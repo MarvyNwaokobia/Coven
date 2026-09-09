@@ -129,6 +129,7 @@ test("goal actions", { skip }, async (t) => {
     await execChallenge("alice");
     r = await callRoute(routes.confirm, "alice", { action: "dissolve" }, P);
     check("confirm marks the goal cancelled and cancels the request that was pending", r.status === 200 && goalRow().status === "cancelled" && db.goal_withdrawal_requests.find((w) => w.id === "w2").status === "cancelled", { goal: goalRow(), w: db.goal_withdrawal_requests });
+    check("dissolving also clears the mirrored countdown fields", goalRow().dissolve_at === null && goalRow().dissolve_initiator_id === null, goalRow());
     r = await callRoute(routes.contribute, "bob", { amountUsdc: 10 }, P);
     check("contributing to a dissolved goal is refused (409)", r.status === 409 && /cancelled|no longer open/.test(r.body.error), r);
 

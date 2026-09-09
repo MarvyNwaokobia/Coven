@@ -104,7 +104,7 @@ contract SplitEscrowTest is Test {
         (,,, uint256 collected,,,) = escrow.getSplit(id);
         assertEq(collected, 20 * ONE_USDC);
         assertTrue(escrow.hasMemberPaid(id, alice));
-        assertEq(usdc.balanceOf(address(escrow)), 20 * ONE_USDC);
+        assertEq(usdc.balanceOf(escrow.custodyOf(id)), 20 * ONE_USDC);
     }
 
     function test_pay_autoReleasesWhenComplete() public {
@@ -164,7 +164,7 @@ contract SplitEscrowTest is Test {
 
         (,,,,, SplitEscrow.SplitStatus status,) = escrow.getSplit(id);
         assertEq(uint8(status), uint8(SplitEscrow.SplitStatus.Expired));
-        assertEq(usdc.balanceOf(address(escrow)), 20 * ONE_USDC); // held until alice claims it
+        assertEq(usdc.balanceOf(escrow.custodyOf(id)), 20 * ONE_USDC); // held until alice claims it
 
         vm.prank(alice);
         escrow.claimRefund(id);
@@ -393,7 +393,7 @@ contract SplitEscrowBlocklistTest is Test {
         vm.prank(bob);
         vm.expectRevert(bytes("blocked"));
         escrow.claimRefund(id); // only Bob is affected
-        assertEq(usdc.balanceOf(address(escrow)), 20 * ONE_USDC); // Bob's share, waiting for him
+        assertEq(usdc.balanceOf(escrow.custodyOf(id)), 20 * ONE_USDC); // Bob's share, waiting for him
     }
 
     /// If the recipient cannot receive USDC, the final payment reverts, so the split cannot complete,

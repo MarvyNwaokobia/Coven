@@ -35,9 +35,9 @@ contract PayCircleTest is Test {
         vm.prank(alice);
         payCircle.send(bob, 100 * ONE_USDC, "for coffee");
 
-        // 0.5% fee = 0.5 USDC, held here until withdrawn
+        // 0.5% fee = 0.5 USDC, held in the fee custody contract until withdrawn
         assertEq(usdc.balanceOf(bob), 99_500_000);
-        assertEq(usdc.balanceOf(address(payCircle)), 500_000);
+        assertEq(usdc.balanceOf(address(payCircle.feeCustody())), 500_000);
         assertEq(payCircle.accruedFees(), 500_000);
         assertEq(usdc.balanceOf(alice), 9_900 * ONE_USDC);
 
@@ -178,8 +178,11 @@ contract PayCircleTest is Test {
         amount = bound(amount, 1, 10_000 * ONE_USDC);
         vm.prank(alice);
         payCircle.send(bob, amount, "");
-        assertEq(usdc.balanceOf(bob) + usdc.balanceOf(address(payCircle)) + usdc.balanceOf(alice), 10_000 * ONE_USDC);
-        assertEq(usdc.balanceOf(address(payCircle)), payCircle.accruedFees());
+        assertEq(
+            usdc.balanceOf(bob) + usdc.balanceOf(address(payCircle.feeCustody())) + usdc.balanceOf(alice),
+            10_000 * ONE_USDC
+        );
+        assertEq(usdc.balanceOf(address(payCircle.feeCustody())), payCircle.accruedFees());
     }
 
     // ---- fee behaviour ----

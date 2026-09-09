@@ -73,7 +73,10 @@ export async function POST(
 
       case "dissolve": {
         if (chain.status !== GOAL_STATUS.Cancelled) return notOnChain("The dissolution");
-        await admin.from("circle_goals").update({ status: "cancelled" }).eq("id", goalId);
+        await admin
+          .from("circle_goals")
+          .update({ status: "cancelled", dissolve_at: null, dissolve_initiator_id: null })
+          .eq("id", goalId);
         // The contract cancels a pending withdrawal when it dissolves a goal.
         await admin
           .from("goal_withdrawal_requests")

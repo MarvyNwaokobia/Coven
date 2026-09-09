@@ -8,6 +8,29 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /**
+ * @title FeeCustody
+ * @notice Holds accrued fees separately from PayCircle itself, so a blocklist
+ *         on the PayCircle contract address does not also freeze the fees
+ *         already collected — only a block on this address would.
+ */
+contract FeeCustody {
+    using SafeERC20 for IERC20;
+
+    IERC20 private immutable _TOKEN;
+    address private immutable _CONTROLLER;
+
+    constructor(IERC20 token_) {
+        _TOKEN = token_;
+        _CONTROLLER = msg.sender;
+    }
+
+    function release(address recipient, uint256 amount) external {
+        require(msg.sender == _CONTROLLER, "not controller");
+        _TOKEN.safeTransfer(recipient, amount);
+    }
+}
+
+/**
  * @title PayCircle
  * @notice Handles group payments, split bills, and platform fee collection.
  *         Simple P2P transfers go direct wallet-to-wallet — this contract
@@ -26,6 +49,7 @@ contract PayCircle is ReentrancyGuard, Ownable2Step {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable USDC;
+    FeeCustody public immutable feeCustody;
     address public feeTreasury;
 
     // Platform fees in basis points
@@ -78,6 +102,7 @@ contract PayCircle is ReentrancyGuard, Ownable2Step {
     constructor(address _usdc, address _feeTreasury, address _owner) Ownable(_owner) {
         if (_usdc == address(0) || _feeTreasury == address(0)) revert ZeroAddress();
         USDC = IERC20(_usdc);
+        feeCustody = new FeeCustody(IERC20(_usdc));
         feeTreasury = _feeTreasury;
     }
 
@@ -166,14 +191,14 @@ contract PayCircle is ReentrancyGuard, Ownable2Step {
         amount = accruedFees;
         if (amount == 0) revert NoFees();
         accruedFees = 0;
-        USDC.safeTransfer(feeTreasury, amount);
+        feeCustody.release(feeTreasury, amount);
         emit FeesWithdrawn(feeTreasury, amount);
     }
 
     function _collectFee(uint256 fee) private {
         if (fee == 0) return;
         accruedFees += fee;
-        USDC.safeTransferFrom(msg.sender, address(this), fee);
+        USDC.safeTransferFrom(msg.sender, address(feeCustody), fee);
     }
 
     // Admin

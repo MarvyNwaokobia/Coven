@@ -85,15 +85,15 @@ contract SplitEscrowInvariantTest is Test {
         targetContract(address(handler));
     }
 
-    /// The escrow holds exactly what is still owed: the collected amount of every open split,
-    /// plus every unclaimed refund of a closed split, plus nothing for a split already paid out.
+    /// Each split's custody holds exactly what is still owed on that split: the collected amount
+    /// while open, plus every unclaimed refund once closed, plus nothing once paid out.
     function invariant_escrowHoldsExactlyWhatIsOwed() public view {
-        uint256 owed;
         for (uint256 s = 0; s < 2; s++) {
             (,, uint256 total, uint256 collected,, SplitEscrow.SplitStatus status,) = escrow.getSplit(splits[s]);
+            uint256 owed;
             if (status == SplitEscrow.SplitStatus.Open) {
                 assertLe(collected, total);
-                owed += collected;
+                owed = collected;
             } else if (status == SplitEscrow.SplitStatus.Expired) {
                 for (uint256 i = 0; i < 3; i++) {
                     if (escrow.hasMemberPaid(splits[s], members[i]) && !escrow.hasClaimedRefund(splits[s], members[i])) {
@@ -101,8 +101,8 @@ contract SplitEscrowInvariantTest is Test {
                     }
                 }
             }
+            assertEq(usdc.balanceOf(escrow.custodyOf(splits[s])), owed);
         }
-        assertEq(usdc.balanceOf(address(escrow)), owed);
     }
 
     /// A completed split paid its recipient exactly the total; nothing else ever reaches the recipient.
@@ -118,6 +118,7 @@ contract SplitEscrowInvariantTest is Test {
     /// No value is created or destroyed.
     function invariant_valueIsConserved() public view {
         uint256 total = usdc.balanceOf(address(escrow)) + usdc.balanceOf(recipient);
+        for (uint256 s = 0; s < 2; s++) total += usdc.balanceOf(escrow.custodyOf(splits[s]));
         for (uint256 i = 0; i < 3; i++) total += usdc.balanceOf(members[i]);
         assertEq(total, 3 * MINTED);
     }

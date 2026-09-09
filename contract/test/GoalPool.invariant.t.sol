@@ -107,19 +107,19 @@ contract GoalPoolInvariantTest is Test {
         targetContract(address(handler));
     }
 
-    /// The pool holds exactly what is still owed: the pooled balance of every open goal, plus the
-    /// unclaimed contributions of every dissolved goal, plus nothing for a goal already paid out.
+    /// Each goal's custody holds exactly what is still owed on that goal: the pooled balance while
+    /// open, plus the unclaimed contributions once dissolved, plus nothing once paid out.
     function invariant_poolHoldsExactlyWhatIsOwed() public view {
-        uint256 owed;
         for (uint256 g = 0; g < 2; g++) {
             (,, uint256 collected, GoalPool.GoalStatus status,,) = pool.getGoal(goals[g]);
+            uint256 owed;
             if (status == GoalPool.GoalStatus.Open) {
-                owed += collected;
+                owed = collected;
             } else if (status == GoalPool.GoalStatus.Cancelled) {
                 for (uint256 i = 0; i < 3; i++) owed += pool.contributionOf(goals[g], actors[i]);
             }
+            assertEq(usdc.balanceOf(pool.custodyOf(goals[g])), owed);
         }
-        assertEq(usdc.balanceOf(address(pool)), owed);
     }
 
     /// For an open goal, the pooled total is exactly the sum of what each member put in.
@@ -133,9 +133,10 @@ contract GoalPoolInvariantTest is Test {
         }
     }
 
-    /// No value is created or destroyed: members plus the pool always hold everything minted.
+    /// No value is created or destroyed: members plus every goal's custody always hold everything minted.
     function invariant_valueIsConserved() public view {
         uint256 total = usdc.balanceOf(address(pool));
+        for (uint256 g = 0; g < 2; g++) total += usdc.balanceOf(pool.custodyOf(goals[g]));
         for (uint256 i = 0; i < 3; i++) total += usdc.balanceOf(actors[i]);
         assertEq(total, 3 * MINTED);
     }

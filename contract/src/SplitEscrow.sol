@@ -6,6 +6,29 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
+ * @title SplitCustody
+ * @notice Holds one split's USDC. A blocklist on one split's custody address
+ *         (or on SplitEscrow itself) cannot freeze any other split's funds,
+ *         because each split only ever moves money through its own contract.
+ */
+contract SplitCustody {
+    using SafeERC20 for IERC20;
+
+    IERC20 private immutable _TOKEN;
+    address private immutable _CONTROLLER;
+
+    constructor(IERC20 token_) {
+        _TOKEN = token_;
+        _CONTROLLER = msg.sender;
+    }
+
+    function release(address recipient, uint256 amount) external {
+        require(msg.sender == _CONTROLLER, "not controller");
+        _TOKEN.safeTransfer(recipient, amount);
+    }
+}
+
+/**
  * @title SplitEscrow
  * @notice Escrow for group bill splits. Members contribute their share.
  *         Funds release to the recipient (e.g. the person who paid the
@@ -37,6 +60,7 @@ contract SplitEscrow is ReentrancyGuard {
 
     struct Split {
         address creator; // Who created the split
+        SplitCustody custody;
         address recipient; // Who receives the collected funds
         uint256 totalAmount; // Total to collect
         uint256 collected; // How much has been collected so far
@@ -112,6 +136,7 @@ contract SplitEscrow is ReentrancyGuard {
 
         Split storage s = splits[splitId];
         s.creator = msg.sender;
+        s.custody = new SplitCustody(USDC);
         s.recipient = recipient;
         s.deadline = block.timestamp + (deadlineHours * 1 hours);
         s.status = SplitStatus.Open;
@@ -150,12 +175,12 @@ contract SplitEscrow is ReentrancyGuard {
         s.paid[msg.sender] = true;
         s.collected += amount;
 
-        USDC.safeTransferFrom(msg.sender, address(this), amount);
+        USDC.safeTransferFrom(msg.sender, address(s.custody), amount);
         emit MemberPaid(splitId, msg.sender, amount);
 
         if (s.collected == s.totalAmount) {
             s.status = SplitStatus.Complete;
-            USDC.safeTransfer(s.recipient, s.collected);
+            s.custody.release(s.recipient, s.collected);
             emit SplitComplete(splitId, s.recipient, s.collected);
         }
     }
@@ -191,7 +216,7 @@ contract SplitEscrow is ReentrancyGuard {
 
         s.refunded[msg.sender] = true;
         uint256 amount = s.owed[msg.sender];
-        USDC.safeTransfer(msg.sender, amount);
+        s.custody.release(msg.sender, amount);
 
         emit Refunded(splitId, msg.sender, amount);
     }
@@ -234,5 +259,10 @@ contract SplitEscrow is ReentrancyGuard {
 
     function getMembers(bytes32 splitId) external view returns (address[] memory) {
         return splits[splitId].members;
+    }
+
+    /// @notice The dedicated custody contract holding this split's USDC.
+    function custodyOf(bytes32 splitId) external view returns (address) {
+        return address(splits[splitId].custody);
     }
 }

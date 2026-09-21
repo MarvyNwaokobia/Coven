@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getAuthedUser } from "@/lib/supabase";
 import { getCircleUserToken, createTransferChallenge } from "@/lib/circle/wallets";
-import { offrampCollectionAddress, roundUsdc } from "@/lib/server/offramp";
+import { offrampCollectionAddress, offrampCredentialsConfigured, roundUsdc } from "@/lib/server/offramp";
 
 type ChallengeRequest =
   | { kind: "send"; toUsername: string; amountUsdc: number }
@@ -97,8 +97,9 @@ export async function POST(req: Request) {
     } else if (body.kind === "cashout") {
       // Funds the payout: the full amount goes to the platform's collection
       // wallet, and /api/cashout/initiate verifies it before paying anyone.
+      // Refused unless a payout can actually be made, so no USDC is taken for one that cannot.
       const collection = offrampCollectionAddress();
-      if (!collection) {
+      if (!collection || !offrampCredentialsConfigured()) {
         return NextResponse.json({ error: "Cash out is not available right now" }, { status: 503 });
       }
       amount = roundUsdc(Number(body.amountUsdc));

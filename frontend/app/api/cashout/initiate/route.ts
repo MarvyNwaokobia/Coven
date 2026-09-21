@@ -4,7 +4,7 @@ import { decrypt } from "@/lib/crypto";
 import { initiateOfframp, getExchangeRate, BankDetails } from "@/lib/yellowcard/offramp";
 import { recordActivity } from "@/lib/server/activity";
 import { resolveAndVerifyRecentTransfer } from "@/lib/circle/wallets";
-import { offrampCollectionAddress, roundUsdc } from "@/lib/server/offramp";
+import { offrampCollectionAddress, offrampCredentialsConfigured, roundUsdc } from "@/lib/server/offramp";
 
 /**
  * POST /api/cashout/initiate - body: { amountUsdc, bankAccountId }
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   }
 
   const collection = offrampCollectionAddress();
-  if (!collection) {
+  if (!collection || !offrampCredentialsConfigured()) {
     return NextResponse.json({ error: "Cash out is not available right now" }, { status: 503 });
   }
   if (!user.circle_wallet_id) {

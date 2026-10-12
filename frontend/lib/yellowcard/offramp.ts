@@ -29,6 +29,11 @@ const FALLBACK_RATES: Record<string, number> = {
   GHS: 15.2,
   KES: 129,
   ZAR: 18.1,
+  UGX: 3700,
+  TZS: 2600,
+  RWF: 1400,
+  XAF: 600,
+  USD: 1,
 };
 
 /** Exchange rate for USDC → local currency. */

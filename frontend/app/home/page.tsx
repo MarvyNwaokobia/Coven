@@ -26,6 +26,8 @@ import {
 import { api } from "@/lib/api-client";
 import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
+import { useCurrency, AUTO } from "@/lib/useCurrency";
+import { DISPLAY_CURRENCIES, getCurrency } from "@/lib/currency";
 import { formatUSDC, formatLocal } from "@/lib/format";
 import type { ActivityItem, PaymentRequest } from "@/lib/types";
 
@@ -38,7 +40,9 @@ const QUICK_ACTIONS = [
 
 export default function HomePage() {
   const { user } = useAuth();
-  const [balance, setBalance] = useState<{ usdc: string; localEstimate: number } | null>(null);
+  const { currency, preference, setPreference } = useCurrency();
+  const [balance, setBalance] = useState<{ usdc: string } | null>(null);
+  const [estimate, setEstimate] = useState<{ code: string; amount: number } | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [requests, setRequests] = useState<PaymentRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,16 +53,32 @@ export default function HomePage() {
   useEffect(() => {
     if (!user) return;
     Promise.allSettled([
-      api<{ usdc: string; localEstimate: number }>("/api/balance"),
       api<{ activity: ActivityItem[] }>("/api/activity"),
       api<{ requests: PaymentRequest[] }>("/api/payments/request"),
-    ]).then(([b, a, r]) => {
-      if (b.status === "fulfilled") setBalance(b.value);
+    ]).then(([a, r]) => {
       if (a.status === "fulfilled") setActivity(a.value.activity);
       if (r.status === "fulfilled") setRequests(r.value.requests);
       setLoading(false);
     });
   }, [user]);
+
+  // Refetch the estimate when the currency changes; USDC itself is currency-independent.
+  useEffect(() => {
+    if (!user) return;
+    let stale = false;
+    api<{ usdc: string; localEstimate: number; localCurrency: string }>(
+      `/api/balance?currency=${currency.code}`
+    )
+      .then((b) => {
+        if (stale) return;
+        setBalance({ usdc: b.usdc });
+        setEstimate({ code: b.localCurrency, amount: b.localEstimate });
+      })
+      .catch(() => {});
+    return () => {
+      stale = true;
+    };
+  }, [user, currency.code]);
 
   async function payRequest(id: string) {
     setPendingId(id);
@@ -147,11 +167,28 @@ export default function HomePage() {
             </div>
 
             <div className="relative mt-5 flex flex-wrap items-center gap-2">
-              {balance && !hidden && (
+              {balance && estimate && !hidden && estimate.code !== "USD" && (
                 <span className="tnum inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
-                  ≈ {formatLocal(balance.localEstimate)} NGN
+                  ≈ {formatLocal(estimate.amount, getCurrency(estimate.code)?.symbol)} {estimate.code}
                 </span>
               )}
+              <label className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
+                <span className="sr-only">Display currency</span>
+                <select
+                  value={preference}
+                  onChange={(e) => setPreference(e.target.value)}
+                  className="cursor-pointer bg-transparent text-xs font-semibold text-white focus-visible:outline-none"
+                >
+                  <option value={AUTO} className="text-ink">
+                    Auto ({currency.code})
+                  </option>
+                  {DISPLAY_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code} className="text-ink">
+                      {c.code} · {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
                 <BoltIcon className="h-3.5 w-3.5" />
                 Settles on Arc in &lt;500ms

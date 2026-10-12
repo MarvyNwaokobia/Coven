@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode } from "react";
 import NotificationBell from "./NotificationBell";
+import SiteFooter from "./SiteFooter";
 import { Avatar, Skeleton } from "./ui";
 import { useAuth, signOut } from "@/lib/useAuth";
 import {
@@ -193,7 +194,7 @@ export default function AppShell({
     <div className="min-h-dvh bg-canvas text-ink">
       <Sidebar />
 
-      <div className="lg:pl-64">
+      <div className="flex min-h-dvh flex-col lg:pl-64">
         <header className="pt-safe sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur-lg">
           <div
             className={`mx-auto flex h-16 items-center gap-3 px-4 lg:px-8 ${
@@ -248,12 +249,15 @@ export default function AppShell({
         <main
           id="main"
           key={pathname}
-          className={`animate-fade-in mx-auto w-full px-4 pt-5 pb-28 lg:px-8 lg:pt-8 lg:pb-14 ${
+          className={`animate-fade-in mx-auto w-full flex-1 px-4 pt-5 pb-10 lg:px-8 lg:pt-8 lg:pb-14 ${
             wide ? "max-w-7xl" : "max-w-5xl"
           }`}
         >
           {children}
         </main>
+
+        {/* Clears the fixed bottom tab bar on mobile. */}
+        <SiteFooter className="pb-20 lg:pb-0" />
       </div>
 
       <BottomTabs />

@@ -15,6 +15,7 @@ import {
   ChevronRightIcon,
   CheckCircleIcon,
 } from "@/components/Icons";
+import SiteFooter from "@/components/SiteFooter";
 
 /* ============================================================================
    Marketing landing page.
@@ -371,18 +372,7 @@ export default function Landing() {
         </Reveal>
       </section>
 
-      {/* --------------------------------------------------------- Footer */}
-      <footer className="border-t border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          <div className="flex items-center gap-2.5">
-            <CovenMark className="h-6 w-6 text-accent" />
-            <span className="font-extrabold tracking-tight">Coven</span>
-          </div>
-          <p className="text-sm text-ink-mute">
-            Built on Arc · USDC native · Circle CCTP × Yellow Card
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

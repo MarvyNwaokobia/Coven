@@ -190,7 +190,7 @@ export default function AppShell({
   const { user } = useAuth({ optional: true });
 
   return (
-    <div className="min-h-dvh bg-canvas text-ink">
+    <div className="flex-1 bg-canvas text-ink">
       <Sidebar />
 
       <div className="lg:pl-64">
@@ -248,7 +248,7 @@ export default function AppShell({
         <main
           id="main"
           key={pathname}
-          className={`animate-fade-in mx-auto w-full px-4 pt-5 pb-28 lg:px-8 lg:pt-8 lg:pb-14 ${
+          className={`animate-fade-in mx-auto w-full px-4 pt-5 pb-10 lg:px-8 lg:pt-8 lg:pb-14 ${
             wide ? "max-w-7xl" : "max-w-5xl"
           }`}
         >

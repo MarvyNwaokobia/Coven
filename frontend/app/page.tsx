@@ -81,7 +81,7 @@ const CHAINS = ["Ethereum", "Base", "Polygon", "Arbitrum", "Avalanche", "Optimis
 
 export default function Landing() {
   return (
-    <div className="min-h-dvh bg-canvas text-ink">
+    <div className="flex-1 bg-canvas text-ink">
       {/* --------------------------------------------------------- Nav bar */}
       <header className="sticky top-0 z-50 border-b border-line bg-canvas/85 backdrop-blur-lg">
         <nav className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5 lg:px-8">
@@ -371,18 +371,6 @@ export default function Landing() {
         </Reveal>
       </section>
 
-      {/* --------------------------------------------------------- Footer */}
-      <footer className="border-t border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          <div className="flex items-center gap-2.5">
-            <CovenMark className="h-6 w-6 text-accent" />
-            <span className="font-extrabold tracking-tight">Coven</span>
-          </div>
-          <p className="text-sm text-ink-mute">
-            Built on Arc · USDC native · Circle CCTP × Yellow Card
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

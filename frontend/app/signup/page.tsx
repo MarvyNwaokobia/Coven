@@ -28,7 +28,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh flex-col bg-canvas px-5 py-8 text-ink">
+    <div className="relative flex flex-1 flex-col bg-canvas px-5 py-8 text-ink">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-32 left-1/2 h-80 w-3xl max-w-[130vw] -translate-x-1/2 rounded-full bg-accent/8 blur-3xl"

@@ -49,7 +49,7 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-5 bg-canvas px-6 py-10 text-ink">
+    <div className="flex flex-1 flex-col items-center justify-center gap-5 bg-canvas px-6 py-10 text-ink">
       <CovenMark className="h-10 w-10 text-accent" />
 
       {error ? (

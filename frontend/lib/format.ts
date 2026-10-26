@@ -6,8 +6,11 @@ export function formatUSDC(amount: number | string): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export function formatLocal(amount: number, symbol = "₦"): string {
-  return `${symbol}${Math.round(amount).toLocaleString("en-US")}`;
+export function formatLocal(amount: number, symbol = "₦", decimals = 0): string {
+  return `${symbol}${amount.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })}`;
 }
 
 export function relativeTime(iso: string): string {

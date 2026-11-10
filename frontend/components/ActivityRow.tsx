@@ -56,6 +56,12 @@ const NEUTRAL = new Set<ActivityItem["type"]>([
   "goal_withdrawn",
 ]);
 
+/** in / out / neutral from the signed-in user's side, for the details screen. */
+export function activityDirection(type: ActivityItem["type"]): "in" | "out" | "neutral" {
+  if (NEUTRAL.has(type)) return "neutral";
+  return OUTGOING.has(type) ? "out" : "in";
+}
+
 const ACTIVITY_ICONS: Partial<Record<ActivityItem["type"], ReactNode>> = {
   payment_sent: <SendIcon className="h-4 w-4" />,
   payment_received: <ReceiveIcon className="h-4 w-4" />,

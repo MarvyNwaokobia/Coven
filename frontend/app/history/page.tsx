@@ -7,7 +7,8 @@ import { HistoryIcon, ReceiveIcon, SendIcon } from "@/components/Icons";
 import { api, apiDownload } from "@/lib/api-client";
 import { useAuth } from "@/lib/useAuth";
 import { formatUSDC } from "@/lib/format";
-import { explorerTxUrl } from "@/lib/explorer";
+import TransactionDetails from "@/components/TransactionDetails";
+import { receiptFromStatement, statementTitle } from "@/lib/receipt";
 import { STATEMENT_KINDS, type StatementRow, type Totals } from "@/lib/statement-types";
 
 type Direction = "all" | "in" | "out";
@@ -65,20 +66,6 @@ function rangeFor(preset: PresetId, customFrom: string, customTo: string): Range
   }
 }
 
-function titleFor(r: StatementRow): string {
-  const who = r.counterparty ? `@${r.counterparty}` : "";
-  switch (r.kind) {
-    case "sent": return who ? `To ${who}` : "Sent";
-    case "received": return who ? `From ${who}` : "Received";
-    case "deposit": return "Deposit from outside Coven";
-    case "circle_send": return who ? `Circle payment to ${who}` : "Circle payment";
-    case "split_pay": return who ? `Split share to ${who}` : "Split share";
-    case "goal_contribution": return r.counterparty ? `Goal: ${r.counterparty}` : "Goal contribution";
-    case "goal_payout": return "Goal payout";
-    case "cash_out": return "Cash out to bank";
-  }
-}
-
 const dayLabel = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
@@ -93,41 +80,39 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function Row({ r }: { r: StatementRow }) {
+function Row({ r, onOpen }: { r: StatementRow; onOpen: (r: StatementRow) => void }) {
   const incoming = r.direction === "in";
-  const tx = r.txHash ? explorerTxUrl(r.txHash) : undefined;
   return (
-    <li className="flex items-center gap-3 px-4 py-3">
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          incoming ? "bg-pos-soft text-pos" : "bg-surface-2 text-ink-soft"
-        }`}
+    <li>
+      <button
+        type="button"
+        onClick={() => onOpen(r)}
+        aria-label={`${statementTitle(r)}, ${incoming ? "received" : "sent"} ${formatUSDC(r.amount)}. View details`}
+        className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors duration-200 hover:bg-surface-2/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
       >
-        {incoming ? <ReceiveIcon className="h-4 w-4" /> : <SendIcon className="h-4 w-4" />}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold text-ink">{titleFor(r)}</p>
-        <p className="truncate text-xs text-ink-mute">
-          {STATEMENT_KINDS[r.kind].label} ·{" "}
-          {new Date(r.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
-          {r.note ? ` · ${r.note}` : ""}
-          {tx && (
-            <>
-              {" · "}
-              <a href={tx} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:underline">
-                View on explorer
-              </a>
-            </>
-          )}
-        </p>
-      </div>
-      <div className="shrink-0 space-y-1 text-right">
-        <p className={`amount text-sm font-extrabold ${incoming ? "text-pos" : "text-ink"}`}>
-          {incoming ? "+" : "−"}
-          {formatUSDC(r.amount)}
-        </p>
-        <StatusBadge status={r.status} />
-      </div>
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+            incoming ? "bg-pos-soft text-pos" : "bg-surface-2 text-ink-soft"
+          }`}
+        >
+          {incoming ? <ReceiveIcon className="h-4 w-4" /> : <SendIcon className="h-4 w-4" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-ink">{statementTitle(r)}</p>
+          <p className="truncate text-xs text-ink-mute">
+            {STATEMENT_KINDS[r.kind].label} ·{" "}
+            {new Date(r.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+            {r.note ? ` · ${r.note}` : ""}
+          </p>
+        </div>
+        <div className="shrink-0 space-y-1 text-right">
+          <p className={`amount text-sm font-extrabold ${incoming ? "text-pos" : "text-ink"}`}>
+            {incoming ? "+" : "−"}
+            {formatUSDC(r.amount)}
+          </p>
+          <StatusBadge status={r.status} />
+        </div>
+      </button>
     </li>
   );
 }
@@ -145,6 +130,7 @@ export default function HistoryPage() {
   const [direction, setDirection] = useState<Direction>("all");
 
   const [rows, setRows] = useState<StatementRow[] | null>(null);
+  const [open, setOpen] = useState<StatementRow | null>(null);
   const [total, setTotal] = useState(0);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
@@ -350,7 +336,7 @@ export default function HistoryPage() {
                 <h2 className="px-1 text-xs font-bold uppercase tracking-[0.08em] text-ink-mute">{g.day}</h2>
                 <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface shadow-e1">
                   {g.rows.map((r) => (
-                    <Row key={r.id} r={r} />
+                    <Row key={r.id} r={r} onOpen={(row) => setOpen(row)} />
                   ))}
                 </ul>
               </section>
@@ -369,6 +355,9 @@ export default function HistoryPage() {
           The CSV and PDF cover the dates you picked. CSV times are in UTC; the PDF uses your time zone. For a PDF, choose “Save as PDF” in the print window. Pending and failed payments are listed but not counted in the totals.
         </p>
       </div>
+      {open && (
+        <TransactionDetails receipt={receiptFromStatement(open)} username={user?.username} onClose={() => setOpen(null)} />
+      )}
     </AppShell>
   );
 }

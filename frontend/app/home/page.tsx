@@ -27,6 +27,7 @@ import { api } from "@/lib/api-client";
 import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
 import { useCurrency, AUTO } from "@/lib/useCurrency";
+import { useBalanceHidden } from "@/lib/useBalanceHidden";
 import { DISPLAY_CURRENCIES, getCurrency } from "@/lib/currency";
 import { NETWORK } from "@/lib/network";
 import { FAUCET_URL } from "@/lib/testnet";
@@ -48,7 +49,7 @@ export default function HomePage() {
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [requests, setRequests] = useState<PaymentRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hidden, setHidden] = useState(false);
+  const [hidden, toggleHidden] = useBalanceHidden();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -190,7 +191,7 @@ export default function HomePage() {
               </div>
 
               <button
-                onClick={() => setHidden((h) => !h)}
+                onClick={toggleHidden}
                 aria-label={hidden ? "Show balance" : "Hide balance"}
                 aria-pressed={hidden}
                 className="-mr-1 -mt-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-white/60 transition-[background-color,color,translate,scale] duration-200 hover:bg-white/10 hover:text-white active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"

@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import SiteFooter from "@/components/SiteFooter";
 import InstallCapture from "@/components/InstallCapture";
+import { THEME_INIT_SCRIPT } from "@/lib/useTheme";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -42,7 +43,11 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${jakarta.variable} ${jetbrains.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <InstallCapture />
         {children}

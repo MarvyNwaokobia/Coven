@@ -227,7 +227,7 @@ export default function HomePage() {
                   href={FAUCET_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-ink transition-colors duration-200 hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  className="inline-flex items-center rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-brand transition-colors duration-200 hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   Get test USDC <span aria-hidden="true" className="ml-1">↗</span>
                 </a>

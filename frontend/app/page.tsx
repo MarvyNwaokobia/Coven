@@ -364,7 +364,7 @@ export default function Landing() {
             </p>
             <Link
               href="/signup"
-              className="sheen group mt-8 inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-white px-8 text-[0.9375rem] font-bold text-ink shadow-e2 transition-[translate,scale,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 hover:shadow-e4 active:translate-y-0 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand"
+              className="sheen group mt-8 inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-white px-8 text-[0.9375rem] font-bold text-brand shadow-e2 transition-[translate,scale,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 hover:shadow-e4 active:translate-y-0 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand"
             >
               Get started free
               <ChevronRightIcon className="h-4 w-4 transition-transform duration-200 ease-out-soft group-hover:translate-x-1" />

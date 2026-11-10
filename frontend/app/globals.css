@@ -111,6 +111,51 @@ body {
   color: #fff;
 }
 
+/* ============================================================================
+   Dark theme: the same tokens, re-valued. <html data-theme="dark"> is set before first
+   paint by the inline script in layout.tsx (see lib/useTheme.ts). Brand stays a navy with
+   white text so every "bg-brand text-white" surface keeps working; ink flips to light, so
+   "bg-ink text-surface" chips invert cleanly.
+   ========================================================================== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #060e1b;
+  --color-surface: #0d1a2e;
+  --color-surface-2: #13233b;
+  --color-surface-3: #1a2d4a;
+
+  --color-ink: #e8eef8;
+  --color-ink-2: #cfdaee;
+  --color-ink-soft: #a6b5cc;
+  --color-ink-mute: #8696b0;
+
+  --color-line: #1d2e49;
+  --color-line-strong: #2b4262;
+
+  --color-brand: #163059;
+  --color-brand-hover: #1d3d72;
+  --color-accent: #4f7ef5;
+  --color-accent-hover: #6a93f8;
+  --color-accent-soft: #10264d;
+  --color-accent-line: #234a8f;
+
+  --color-pos: #0f9f6e;
+  --color-pos-soft: #072a20;
+  --color-pos-line: #0f5a43;
+  --color-neg: #ef4444;
+  --color-neg-soft: #2b1217;
+  --color-neg-line: #5d2029;
+  --color-warn: #f59e0b;
+  --color-warn-soft: #2a2108;
+  --color-warn-line: #5e4812;
+
+  --shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
+  --shadow-e2: 0 2px 4px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-e3: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-e4: 0 18px 48px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
 /* Native controls inherit the palette (date pickers, selects, scrollbars). */
 :root {
   color-scheme: light;

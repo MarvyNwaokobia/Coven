@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import ActivityFeed from "@/components/ActivityFeed";
+import InstallBanner from "@/components/InstallBanner";
 import {
   Card,
   Avatar,
@@ -119,6 +120,10 @@ export default function HomePage() {
           <Alert>{error}</Alert>
         </div>
       )}
+
+      <div className="mb-5 empty:hidden lg:mb-6">
+        <InstallBanner />
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-6">
         {/* ------------------------------------------------ Primary column */}

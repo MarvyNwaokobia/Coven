@@ -119,7 +119,7 @@ export default function NetworkSettingsPage() {
           </span>
           <div className="min-w-0">
             <p className="text-sm font-bold text-ink">{NETWORK_LABEL}</p>
-            <p className="text-xs text-ink-mute">Sub-500ms settlement · zero gas on P2P</p>
+            <p className="text-xs text-ink-mute">Zero gas on P2P</p>
           </div>
         </Card>
       </div>

@@ -7,7 +7,7 @@ import UserSearch from "@/components/UserSearch";
 import PaymentSuccess from "@/components/PaymentSuccess";
 import Stepper from "@/components/Stepper";
 import { Button, Input, Card, Avatar, AmountInput, Alert } from "@/components/ui";
-import { BoltIcon, SendIcon } from "@/components/Icons";
+import { SendIcon } from "@/components/Icons";
 import { api } from "@/lib/api-client";
 import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
@@ -164,11 +164,6 @@ function SendFlow() {
                 </div>
               </dl>
             </Card>
-
-            <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-ink-mute">
-              <BoltIcon className="h-3.5 w-3.5" />
-              Settles on Arc in under 500ms
-            </p>
 
             {error && <Alert>{error}</Alert>}
 

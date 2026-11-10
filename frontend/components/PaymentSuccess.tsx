@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { Avatar } from "./ui";
-import { CheckCircleIcon, BoltIcon } from "./Icons";
+import { CheckCircleIcon } from "./Icons";
 import { formatUSDC } from "@/lib/format";
 
 /**
@@ -53,14 +53,6 @@ export default function PaymentSuccess({
       >
         Sent to <span className="font-bold text-white">@{username}</span>
       </p>
-
-      <span
-        className="animate-fade-up mt-6 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white/85"
-        style={{ animationDelay: "240ms" }}
-      >
-        <BoltIcon className="h-3.5 w-3.5" />
-        Settled on Arc in &lt;500ms
-      </span>
 
       <button
         onClick={onDone}

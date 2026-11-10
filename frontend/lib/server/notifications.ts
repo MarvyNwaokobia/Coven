@@ -1,7 +1,7 @@
 import { formatUSDC } from "@/lib/format";
 import type { ActivityItem } from "@/lib/types";
 
-type ActivityRow = ActivityItem & { actor?: { username: string } | null };
+type ActivityRow = Omit<ActivityItem, "actor"> & { actor?: { username: string } | null };
 
 /**
  * Turns a raw activity row into a {title, body} notification. Most types'

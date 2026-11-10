@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { ActivityType } from "@/lib/types";
+import { pushActivity } from "@/lib/server/push";
 
 type ActivityInsert = {
   user_id: string;
@@ -31,8 +32,12 @@ export async function recordActivity(items: ActivityInsert[]): Promise<boolean> 
   const admin = getSupabaseAdmin();
 
   const { error } = await admin.from("activity").insert(items);
-  if (!error) return true;
+  if (!error) {
+    await pushActivity(items);
+    return true;
+  }
 
+  const saved: ActivityInsert[] = [];
   const failed: { type: string; user_id: string; reference_id: string | null; code?: string; message: string }[] = [];
   for (const item of items) {
     let { error: rowError } = await admin.from("activity").insert(item);
@@ -40,6 +45,7 @@ export async function recordActivity(items: ActivityInsert[]): Promise<boolean> 
       await sleep(200);
       ({ error: rowError } = await admin.from("activity").insert(item));
     }
+    if (!rowError) saved.push(item);
     if (rowError) {
       failed.push({
         type: item.type,
@@ -51,6 +57,7 @@ export async function recordActivity(items: ActivityInsert[]): Promise<boolean> 
     }
   }
 
+  await pushActivity(saved);
   if (failed.length > 0) {
     console.error("[activity-failed]", JSON.stringify(failed));
     return false;

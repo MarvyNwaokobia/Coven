@@ -11,6 +11,7 @@ import {
   GlobeIcon,
   LockIcon,
   LogoutIcon,
+  NotificationBellIcon,
   ShieldIcon,
   UserGroupIcon,
 } from "@/components/Icons";
@@ -45,6 +46,7 @@ export default function SettingsPage() {
         </SettingsGroup>
 
         <SettingsGroup title="App">
+          <SettingsRow href="/settings/notifications" icon={<NotificationBellIcon className="h-4 w-4" />} label="Notifications" hint="Get alerts on this device" />
           <SettingsRow
             href="/settings/network"
             icon={<GlobeIcon className="h-4 w-4" />}

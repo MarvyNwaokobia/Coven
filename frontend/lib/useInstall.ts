@@ -28,7 +28,19 @@ if (typeof window !== "undefined") {
   });
 }
 
-export type InstallMode = "installed" | "prompt" | "ios" | "none";
+/** installed: running as an app. prompt: one tap via the browser. ios/manual: not installed, but the user can add it by hand. */
+export type InstallMode = "installed" | "prompt" | "ios" | "manual";
+export type InstallPlatform = "ios" | "android" | "safari-mac" | "chromium" | "firefox" | "other";
+
+export function detectPlatform(): InstallPlatform {
+  const ua = navigator.userAgent;
+  if (/iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+  if (/android/i.test(ua)) return "android";
+  if (/firefox/i.test(ua)) return "firefox";
+  if (/chrome|chromium|edg\//i.test(ua)) return "chromium";
+  if (/safari/i.test(ua) && /Macintosh/.test(ua)) return "safari-mac";
+  return "other";
+}
 
 function isStandalone() {
   return (
@@ -37,18 +49,11 @@ function isStandalone() {
   );
 }
 
-function isIosSafari() {
-  const ua = navigator.userAgent;
-  const ios = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  // Other iOS browsers cannot add to the Home Screen the same way; CriOS/FxiOS/EdgiOS are Chrome/Firefox/Edge.
-  return ios && !/crios|fxios|edgios/i.test(ua);
-}
-
 function mode(): InstallMode {
   if (installed || isStandalone()) return "installed";
   if (deferred) return "prompt";
-  if (isIosSafari()) return "ios";
-  return "none";
+  if (detectPlatform() === "ios") return "ios";
+  return "manual";
 }
 
 const subscribe = (cb: () => void) => {
@@ -60,7 +65,7 @@ const subscribe = (cb: () => void) => {
 
 /** Whether Coven can be installed here, and how: a native prompt, iPhone Home Screen steps, or not at all. */
 export function useInstall() {
-  const current = useSyncExternalStore(subscribe, mode, () => "none" as InstallMode);
+  const current = useSyncExternalStore(subscribe, mode, () => "manual" as InstallMode);
 
   const install = useCallback(async () => {
     if (!deferred) return;

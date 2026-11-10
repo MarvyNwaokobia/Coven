@@ -3,6 +3,7 @@
 import AppShell from "@/components/AppShell";
 import { Card } from "@/components/ui";
 import { usePush } from "@/lib/usePush";
+import InstallBanner from "@/components/InstallBanner";
 
 const NOTES: Record<string, string> = {
   unsupported: "This browser doesn't support push notifications.",
@@ -19,6 +20,14 @@ export default function NotificationSettingsPage() {
   return (
     <AppShell title="Notifications" subtitle="Alerts on this device" back>
       <div className="mx-auto max-w-xl space-y-4">
+        <InstallBanner
+          dismissible={false}
+          message={
+            state === "ios-install"
+              ? "On iPhone, payment alerts only work once Coven is installed. Install it, then come back and turn alerts on."
+              : "Install Coven for the most reliable payment alerts, and to open it like an app."
+          }
+        />
         <Card className="flex items-center justify-between gap-4 py-4">
           <div className="min-w-0">
             <p className="text-sm font-bold text-ink">Push notifications</p>

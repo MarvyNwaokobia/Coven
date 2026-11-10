@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
+import InstallBanner from "@/components/InstallBanner";
 import { SkeletonList, EmptyState } from "@/components/ui";
 import { NotificationBellIcon } from "@/components/Icons";
 import { api } from "@/lib/api-client";
@@ -57,7 +58,8 @@ export default function NotificationsPage() {
       subtitle={unread > 0 ? `${unread} unread` : undefined}
       back
     >
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl space-y-4">
+        <InstallBanner message="Get these as alerts on your phone: install Coven, then turn on notifications in Settings." />
         {list === null ? (
           <SkeletonList rows={5} />
         ) : list.length === 0 ? (

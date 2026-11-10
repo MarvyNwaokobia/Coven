@@ -17,14 +17,12 @@ import {
 } from "@/components/Icons";
 import { useAuth } from "@/lib/useAuth";
 import { useInstall } from "@/lib/useInstall";
-import { useState } from "react";
 import { NETWORK, NETWORK_LABEL } from "@/lib/network";
 
 /** The Settings home: a short list of sections, each opening its own page. */
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const { mode: installMode, install } = useInstall();
-  const [showIosSteps, setShowIosSteps] = useState(false);
 
   return (
     <AppShell title="Settings" subtitle="Your handle, wallet and payouts">
@@ -50,12 +48,12 @@ export default function SettingsPage() {
         </SettingsGroup>
 
         <SettingsGroup title="App">
-          {(installMode === "prompt" || installMode === "ios") && (
+          {installMode !== "installed" && (
             <SettingsRow
               icon={<DownloadGlyph />}
               label="Install Coven"
-              hint={installMode === "ios" ? "Add to your Home Screen" : "Open it like an app from your home screen"}
-              onClick={installMode === "ios" ? () => setShowIosSteps((v) => !v) : install}
+              hint="Open it like an app and get payment alerts"
+              {...(installMode === "prompt" ? { onClick: install } : { href: "/settings/install" })}
             />
           )}
           <SettingsRow href="/settings/notifications" icon={<NotificationBellIcon className="h-4 w-4" />} label="Notifications" hint="Get alerts on this device" />
@@ -66,12 +64,6 @@ export default function SettingsPage() {
             hint={NETWORK === "testnet" ? `${NETWORK_LABEL} · get free test USDC from Circle` : NETWORK_LABEL}
           />
         </SettingsGroup>
-
-        {installMode === "ios" && showIosSteps && (
-          <p className="-mt-3 px-1 text-xs leading-relaxed text-ink-soft">
-            In Safari, tap the Share button, then Add to Home Screen, then Add. Open Coven from your Home Screen to turn on payment alerts.
-          </p>
-        )}
 
         <SettingsGroup title="Support and legal">
           <SettingsRow href="/settings/help" icon={<CreditCardIcon className="h-4 w-4" />} label="Help and bug reports" hint="Contact us, copy debug info" />

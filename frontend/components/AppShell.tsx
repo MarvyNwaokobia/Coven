@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode } from "react";
 import NotificationBell from "./NotificationBell";
+import InstallPill from "./InstallPill";
 import { Avatar, Skeleton } from "./ui";
 import { useAuth, signOut } from "@/lib/useAuth";
 import {
@@ -231,6 +232,7 @@ export default function AppShell({
 
             <div className="flex shrink-0 items-center gap-1.5">
               {action}
+              <InstallPill />
               <NotificationBell />
               <Link
                 href="/settings"

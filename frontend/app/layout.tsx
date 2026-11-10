@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import SiteFooter from "@/components/SiteFooter";
 import InstallCapture from "@/components/InstallCapture";
+import UpdatePrompt from "@/components/UpdatePrompt";
 import { THEME_INIT_SCRIPT } from "@/lib/useTheme";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -50,6 +51,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <InstallCapture />
+        <UpdatePrompt />
         {children}
         <SiteFooter />
       </body>

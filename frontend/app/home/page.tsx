@@ -52,6 +52,15 @@ export default function HomePage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  const [loadError, setLoadError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
+  // Shown instead of an endless skeleton when a load fails, so the reason is visible (and copyable).
+  const retry = () => {
+    setLoadError("");
+    setLoading(true);
+    setRetryKey((k) => k + 1);
+  };
+
   useEffect(() => {
     if (!user) return;
     Promise.allSettled([
@@ -60,9 +69,13 @@ export default function HomePage() {
     ]).then(([a, r]) => {
       if (a.status === "fulfilled") setActivity(a.value.activity);
       if (r.status === "fulfilled") setRequests(r.value.requests);
+      const failed = [a, r].find((x): x is PromiseRejectedResult => x.status === "rejected");
+      if (failed) {
+        setLoadError(`Could not load your activity: ${failed.reason instanceof Error ? failed.reason.message : "request failed"}`);
+      }
       setLoading(false);
     });
-  }, [user]);
+  }, [user, retryKey]);
 
   // Refetch the estimate when the currency changes; USDC itself is currency-independent.
   useEffect(() => {
@@ -76,11 +89,13 @@ export default function HomePage() {
         setBalance({ usdc: b.usdc });
         setEstimate({ code: b.localCurrency, amount: b.localEstimate });
       })
-      .catch(() => {});
+      .catch((e) => {
+        if (!stale) setLoadError(`Could not load your balance: ${e instanceof Error ? e.message : "request failed"}`);
+      });
     return () => {
       stale = true;
     };
-  }, [user, ready, currency.code]);
+  }, [user, ready, currency.code, retryKey]);
 
   async function payRequest(id: string) {
     setPendingId(id);
@@ -118,6 +133,18 @@ export default function HomePage() {
       {error && (
         <div className="mb-4">
           <Alert>{error}</Alert>
+        </div>
+      )}
+      {loadError && (
+        <div className="mb-4 space-y-2">
+          <Alert>{loadError}</Alert>
+          <button
+            type="button"
+            onClick={retry}
+            className="inline-flex h-9 items-center rounded-full border border-line bg-surface px-4 text-xs font-bold text-ink transition-colors duration-200 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Try again
+          </button>
         </div>
       )}
 

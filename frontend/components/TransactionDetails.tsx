@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CovenMark, CopyIcon, CheckCircleIcon } from "./Icons";
 import { Spinner } from "./ui";
 import { formatUSDC } from "@/lib/format";
@@ -124,8 +125,10 @@ export default function TransactionDetails({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="presentation">
+  // Portal to <body>: the page area has an entrance animation that makes its own stacking layer,
+  // which would otherwise trap this sheet underneath the bottom tab bar.
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center" role="presentation">
       <button
         type="button"
         aria-label="Close"
@@ -234,6 +237,7 @@ export default function TransactionDetails({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CovenMark, SearchIcon, CheckCircleIcon } from "@/components/Icons";
 import { Card, SectionHeading, Skeleton, Alert, Button } from "@/components/ui";
 import { formatUSDC, relativeTime } from "@/lib/format";
 import { NETWORK, NETWORK_LABEL } from "@/lib/network";
 import { STAGES, TX_KINDS, type TxKind } from "@/lib/testnet";
 import type { TrackerData, Participant } from "@/lib/server/testnet-tracker";
+import { getSupabaseBrowser } from "@/lib/supabase";
 
 /* ============================================================================
-   Public testnet tracker: totals, stage progress, every tester's progress and
-   the live transaction feed. Data from /api/testnet, refreshed every 30s.
+   Core-team testnet tracker: totals, stage progress, every tester's progress
+   and the live transaction feed. Data from /api/testnet (team emails only),
+   refreshed every 30s. Opens with the shared access code (or a team sign-in);
+   anyone else sees the code form and no data.
    ========================================================================== */
 
 const REFRESH_MS = 30_000;
@@ -83,6 +86,26 @@ function download(name: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
+const CODE_KEY = "coven-tracker-code";
+
+/** The access code is remembered on this device so the team does not retype it on every visit. */
+function readCode(): string | null {
+  try {
+    return localStorage.getItem(CODE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeCode(code: string | null) {
+  try {
+    if (code) localStorage.setItem(CODE_KEY, code);
+    else localStorage.removeItem(CODE_KEY);
+  } catch {
+    // storage blocked: the code just is not remembered
+  }
+}
+
 export default function TestnetTrackerPage() {
   const [data, setData] = useState<TrackerData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,10 +113,32 @@ export default function TestnetTrackerPage() {
   const [onlyEligible, setOnlyEligible] = useState(false);
   const [feedKind, setFeedKind] = useState<TxKind | "all">("all");
   const [shown, setShown] = useState(PAGE_SIZE);
+  const [gate, setGate] = useState<"checking" | "open" | "locked">("checking");
+  const [codeInput, setCodeInput] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+  const codeRef = useRef<string | null>(null);
 
-  const load = useCallback(async () => {
+  /** Returns false when the server refused the credentials. */
+  const load = useCallback(async (): Promise<boolean> => {
     try {
-      const res = await fetch("/api/testnet", { cache: "no-store" });
+      const headers: Record<string, string> = {};
+      if (codeRef.current) headers["x-access-code"] = codeRef.current;
+      const { data: auth } = await getSupabaseBrowser().auth.getSession();
+      if (auth.session?.access_token) headers.Authorization = `Bearer ${auth.session.access_token}`;
+
+      const res = await fetch("/api/testnet", { cache: "no-store", headers });
+      if (res.status === 401 || res.status === 403) {
+        if (codeRef.current) {
+          codeRef.current = null;
+          storeCode(null);
+          setCodeError("That access code is not right.");
+        }
+        setGate("locked");
+        setData(null);
+        return false;
+      }
+      setGate("open");
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Tracker is unavailable");
       setData(body);
@@ -101,13 +146,30 @@ export default function TestnetTrackerPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Tracker is unavailable");
     }
+    return true;
   }, []);
 
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault();
+    const code = codeInput.trim();
+    if (!code) return;
+    setUnlocking(true);
+    setCodeError(null);
+    codeRef.current = code;
+    if (await load()) storeCode(code);
+    setUnlocking(false);
+  }
+
   useEffect(() => {
+    codeRef.current = readCode();
     load();
+  }, [load]);
+
+  useEffect(() => {
+    if (gate !== "open") return;
     const id = setInterval(load, REFRESH_MS);
     return () => clearInterval(id);
-  }, [load]);
+  }, [gate, load]);
 
   const participants = useMemo(() => {
     if (!data) return [];
@@ -143,12 +205,44 @@ export default function TestnetTrackerPage() {
         </div>
       </header>
 
+      {gate !== "open" ? (
+        <main className="mx-auto max-w-md px-4 py-20 text-center">
+          {gate === "checking" ? (
+            <Skeleton className="mx-auto h-24" />
+          ) : (
+            <Card className="py-8">
+              <h1 className="text-xl font-extrabold tracking-tight text-ink">Team only</h1>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                The testnet tracker is for the Coven core team. Enter the access code to open it.
+              </p>
+              <form onSubmit={unlock} className="mt-5 space-y-3 text-left">
+                <label className="block">
+                  <span className="sr-only">Access code</span>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    autoFocus
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value)}
+                    placeholder="Access code"
+                    className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-accent"
+                  />
+                </label>
+                {codeError && <p className="text-sm font-semibold text-neg">{codeError}</p>}
+                <Button type="submit" fullWidth loading={unlocking} disabled={!codeInput.trim()}>
+                  Open tracker
+                </Button>
+              </form>
+            </Card>
+          )}
+        </main>
+      ) : (
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Testnet tracker</h1>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            Every verified transaction on Coven&apos;s testnet and each tester&apos;s progress. Complete every required stage to
-            become eligible. Updates every 30 seconds
+            Internal view for the core team: every verified testnet transaction and each tester&apos;s progress. A tester is
+            eligible once every required stage is ticked. Updates every 30 seconds
             {data && <> · last updated {relativeTime(data.generatedAt)}</>}.
           </p>
         </div>
@@ -399,6 +493,7 @@ export default function TestnetTrackerPage() {
           </Card>
         </section>
       </main>
+      )}
     </div>
   );
 }

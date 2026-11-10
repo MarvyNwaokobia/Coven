@@ -36,7 +36,7 @@ export const TX_KINDS: Record<TxKind, { label: string; contract: string }> = {
  * The stages a tester must complete. `required` stages decide eligibility; the rest are shown as
  * progress. Keep this list and the tester guide in step.
  */
-export type StageId = "wallet" | "funded" | "circle" | "send" | "split" | "goal";
+export type StageId = "wallet" | "funded" | "circle" | "send" | "split" | "goal" | "invite";
 
 export const STAGES: { id: StageId; label: string; required: boolean }[] = [
   { id: "wallet", label: "Wallet set up", required: true },
@@ -45,4 +45,5 @@ export const STAGES: { id: StageId; label: string; required: boolean }[] = [
   { id: "send", label: "Sent money", required: true },
   { id: "split", label: "Split a bill", required: true },
   { id: "goal", label: "Contributed to a goal", required: true },
+  { id: "invite", label: "Invited a friend", required: true },
 ];

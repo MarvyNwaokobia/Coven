@@ -7,6 +7,7 @@ import { installFakes, load } from "./helpers/fakes.mjs";
 const { db, reset } = installFakes();
 const { buildTracker, classify } = await load("lib/server/testnet-tracker.ts");
 const route = await load("app/api/testnet/route.ts");
+const mine = await load("app/api/testnet/me/route.ts");
 
 const at = (minute) => `2026-11-09T10:${String(minute).padStart(2, "0")}:00.000Z`;
 
@@ -71,7 +72,7 @@ test("a tester is eligible only when every required stage is done", () => {
   const alice = data.participants.find((p) => p.username === "alice");
   const bob = data.participants.find((p) => p.username === "bob");
 
-  assert.deepEqual(alice.stages, { wallet: true, funded: true, circle: true, send: true, split: true, goal: true });
+  assert.deepEqual(alice.stages, { wallet: true, funded: true, circle: true, send: true, split: true, goal: true, invite: true });
   assert.equal(alice.eligible, true);
   assert.equal(alice.referrals, 2);
   assert.equal(alice.txCount, 4); // send, split pay, goal create, goal contribute (not the deposit)
@@ -79,11 +80,26 @@ test("a tester is eligible only when every required stage is done", () => {
 
   assert.equal(bob.stages.circle, false);
   assert.equal(bob.stages.goal, false);
+  assert.equal(bob.stages.invite, false);
   assert.equal(bob.eligible, false);
 
   assert.equal(data.totals.eligible, 1);
   assert.equal(data.participants[0].username, "alice"); // eligible testers first
   assert.equal(data.stages.find((s) => s.id === "wallet").users, 2);
+});
+
+test("an invite counts only once the invited friend has set up a wallet", () => {
+  const input = fixture();
+  input.users[1].referred_by = null; // bob joined on his own; only carol (no wallet yet) was invited
+  let alice = buildTracker(input).participants.find((p) => p.username === "alice");
+  assert.equal(alice.referrals, 1);
+  assert.equal(alice.stages.invite, false);
+  assert.equal(alice.eligible, false);
+
+  input.users[2].wallet_address = "0xca401";
+  alice = buildTracker(input).participants.find((p) => p.username === "alice");
+  assert.equal(alice.stages.invite, true);
+  assert.equal(alice.eligible, true);
 });
 
 test("the feed names the tester, their address and who they paid, newest first", () => {
@@ -95,13 +111,80 @@ test("the feed names the tester, their address and who they paid, newest first",
   assert.equal(send.counterparty, "bob");
 });
 
-test("GET /api/testnet serves the tracker from the database without private fields", async () => {
+const asUser = (id, code) =>
+  new Request("http://localhost/api/testnet", {
+    headers: { ...(id ? { authorization: `Bearer tok-${id}` } : {}), ...(code ? { "x-access-code": code } : {}) },
+  });
+
+test("GET /api/testnet is closed to anyone not on the team", async () => {
   Object.assign(db, fixture());
   db.users[0].email = "alice@example.com";
-  const res = await route.GET();
+  db.users[1].email = "bob@example.com";
+  process.env.TESTNET_TEAM_EMAILS = "Alice@Example.com";
+  process.env.TESTNET_ACCESS_CODE = "open-sesame-2026";
+
+  assert.equal((await route.GET(asUser(null))).status, 401);
+  assert.equal((await route.GET(asUser("bob"))).status, 401); // signed in, not on the team, no code
+  const wrong = await route.GET(asUser(null, "open-sesame"));
+  assert.equal(wrong.status, 403);
+  assert.ok(!JSON.stringify(await wrong.json()).includes("0xa11ce"));
+
+  process.env.TESTNET_TEAM_EMAILS = "";
+  process.env.TESTNET_ACCESS_CODE = "";
+  assert.equal((await route.GET(asUser("alice"))).status, 401);
+  assert.equal((await route.GET(asUser(null, "anything"))).status, 403); // no code set: nothing matches
+});
+
+test("a team email that was never confirmed does not open the tracker", async () => {
+  Object.assign(db, fixture());
+  db.users[0].email = "alice@example.com";
+  db.users[0].email_unconfirmed = true; // signed up with an address they have not proved they own
+  process.env.TESTNET_TEAM_EMAILS = "alice@example.com";
+  process.env.TESTNET_ACCESS_CODE = "";
+  assert.equal((await route.GET(asUser("alice"))).status, 401);
+  db.users[0].email_unconfirmed = false;
+  assert.equal((await route.GET(asUser("alice"))).status, 200);
+});
+
+test("an access code shorter than 16 characters is ignored, even when it matches", async () => {
+  Object.assign(db, fixture());
+  process.env.TESTNET_TEAM_EMAILS = "";
+  process.env.TESTNET_ACCESS_CODE = "CPTTCODE"; // 8 characters: guessable, and there is no attempt limit
+  assert.equal((await route.GET(asUser(null, "CPTTCODE"))).status, 403);
+  process.env.TESTNET_ACCESS_CODE = "a-long-random-code-9";
+  assert.equal((await route.GET(asUser(null, "a-long-random-code-9"))).status, 200);
+});
+
+test("the access code opens the tracker without a sign-in", async () => {
+  Object.assign(db, fixture());
+  process.env.TESTNET_TEAM_EMAILS = "";
+  process.env.TESTNET_ACCESS_CODE = "open-sesame-2026";
+  const res = await route.GET(asUser(null, " open-sesame-2026 "));
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).totals.users, 3);
+});
+
+test("GET /api/testnet serves the tracker to the team without private fields", async () => {
+  Object.assign(db, fixture());
+  db.users[0].email = "alice@example.com";
+  process.env.TESTNET_TEAM_EMAILS = "alice@example.com, someone@else.com";
+  process.env.TESTNET_ACCESS_CODE = "";
+  const res = await route.GET(asUser("alice"));
+  assert.equal(res.headers.get("cache-control"), "private, no-store");
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.totals.users, 3);
   assert.equal(body.totals.eligible, 1);
   assert.ok(!JSON.stringify(body).includes("alice@example.com"));
+});
+
+test("GET /api/testnet/me gives a tester only their own progress", async () => {
+  Object.assign(db, fixture());
+  const res = await mine.GET(asUser("bob"));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.progress.username, "bob");
+  assert.equal(body.progress.stages.invite, false);
+  assert.ok(!JSON.stringify(body).includes("0xa11ce")); // nobody else's address
+  assert.equal((await mine.GET(asUser(null))).status, 401);
 });

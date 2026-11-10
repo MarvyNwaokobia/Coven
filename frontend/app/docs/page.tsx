@@ -39,7 +39,7 @@ const NAV: NavGroup[] = [
       { id: "testnet", label: "Testnet" },
       { id: "getting-started", label: "Getting started" },
       { id: "eligibility", label: "Eligibility" },
-      ...(TRACKER_ENABLED ? [{ id: "tracker", label: "Testnet tracker" }] : []),
+      ...(TRACKER_ENABLED ? [{ id: "tracker", label: "How activity is counted" }] : []),
     ],
   },
   {
@@ -222,11 +222,6 @@ export default function DocsPage() {
             <a href={WHITEPAPER} target="_blank" rel="noopener noreferrer" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft hover:text-ink sm:inline-block">
               Whitepaper
             </a>
-            {TRACKER_ENABLED && (
-              <Link href="/testnet" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft hover:text-ink sm:inline-block">
-                Tracker
-              </Link>
-            )}
             <Link href="/signup" className="rounded-lg bg-ink px-3.5 py-2 text-sm font-bold text-surface hover:bg-ink-2">
               Open the app
             </Link>
@@ -308,9 +303,6 @@ export default function DocsPage() {
               rows={[
                 ["App", <Ext key="app" href={APP_URL}>{APP_URL.replace(/^https?:\/\//, "")}</Ext>],
                 ["Testnet whitepaper", <Ext key="wp" href={WHITEPAPER}>Download the PDF</Ext>],
-                ...(TRACKER_ENABLED
-                  ? [["Testnet tracker", <Link key="t" href="/testnet" className="font-semibold text-accent hover:underline">{APP_URL.replace(/^https?:\/\//, "")}/testnet</Link>] as [string, ReactNode]]
-                  : []),
                 ["X", <Ext key="x" href={X_URL}>@Covenpay</Ext>],
                 ["Telegram", <Ext key="tg" href={TELEGRAM_URL}>Coven testnet group</Ext>],
                 ["USDC faucet", <Ext key="f" href={FAUCET}>faucet.circle.com</Ext>],
@@ -363,7 +355,7 @@ export default function DocsPage() {
           <Section
             id="eligibility"
             title="Eligibility"
-            lead={`You are eligible once you have completed all ${required.length} required stages. The tracker checks this automatically from on-chain transactions, so there is nothing to submit.`}
+            lead={`You are eligible once you have completed all ${required.length} required stages. The team checks this automatically from on-chain transactions and invite records, so there is nothing to submit.`}
           >
             <Table
               head={["Stage", "What you do", "What counts", "Contract", "Required"]}
@@ -374,11 +366,12 @@ export default function DocsPage() {
                 ["Send money", "Send USDC to an @username or inside a circle", "One completed send", "USDC transfer", "Yes"],
                 ["Split a bill", "Create a bill split, or pay your share of one", "One split created or paid", "SplitEscrow", "Yes"],
                 ["Contribute to a goal", "Put USDC into a circle savings goal", "One contribution", "GoalPool", "Yes"],
+                ["Invite a friend", "Share your invite link from Settings", "One friend who signs up through it and sets up a wallet", "None (off-chain)", "Yes"],
               ]}
             />
             <p>
-              <strong>Bonus activity</strong> appears on the tracker but does not change eligibility: total transactions, USDC
-              moved, goals created, and friends who joined with your invite link.
+              <strong>Bonus activity</strong> is recorded but does not change eligibility: total transactions, USDC moved, goals
+              created, and any invites beyond the first.
             </p>
             <H3>Fair play</H3>
             <Bullets
@@ -391,20 +384,18 @@ export default function DocsPage() {
           </Section>
 
           {TRACKER_ENABLED && (
-          <Section id="tracker" title="Testnet tracker" lead="A public page that shows every verified testnet transaction and every tester's progress. It refreshes every 30 seconds.">
+          <Section id="tracker" title="How activity is counted" lead="The core team tracks every verified testnet transaction and each tester's progress on an internal tracker.">
             <p>
-              Open <Link href="/testnet" className="font-semibold text-accent hover:underline">/testnet</Link> to see totals, how
-              many testers have reached each stage, a searchable list of testers with their wallet addresses and a tick per stage,
-              and a live feed of transactions with links to the explorer. Search for your @username or address to check your own
-              progress.
+              Each transaction you make through Coven is recorded with what it did and which contract it went through. Your stages
+              are ticked from those records and from your invite link, so you do not need to submit anything. The tracker itself
+              is only open to the Coven team; to check your own progress, open <strong>Settings → Testnet</strong>.
             </p>
             <Table
               head={["Tracker label", "What happened", "Contract"]}
               rows={(Object.keys(TX_KINDS) as TxKind[]).map((k) => [TX_KINDS[k].label, KIND_MEANING[k], TX_KINDS[k].contract])}
             />
             <p>
-              The tracker shows usernames and wallet addresses, which are already public on profiles and on-chain. It never shows
-              emails or phone numbers. Only transactions the server has verified on-chain are recorded, so a failed or abandoned
+              The tracker lists usernames and wallet addresses, never emails or phone numbers. Only transactions the server has verified on-chain are recorded, so a failed or abandoned
               payment never appears.
             </p>
           </Section>
@@ -544,7 +535,7 @@ export default function DocsPage() {
             <p>
               Your link is in <strong>Settings</strong> and looks like <Code>/r/yourname</Code>. Someone who signs up through it is
               recorded as invited by you, once, and only for a new account. You cannot invite yourself. Your invite count is shown in
-              Settings and on the tracker.
+              Settings. A friend who joins through your link and sets up a wallet completes your Invite stage.
             </p>
           </Section>
 
@@ -762,12 +753,13 @@ pnpm dev                     # http://localhost:3000`}</CodeBlock>
                 ["Activity", <Code key="h">/api/activity · /api/history · /api/history/export · /api/notifications · /api/notifications/unread-count</Code>],
                 ["Invites", <Code key="r">/api/referrals · /api/referrals/claim</Code>],
                 ["Cash out", <Code key="o">/api/banks · /api/cashout/initiate · /api/cashout/[payoutId]/status</Code>],
-                ["Public", <Code key="t">/api/testnet · /api/health</Code>],
+                ["Public", <Code key="t">/api/health</Code>],
+                ["Core team", <Code key="tt">/api/testnet</Code>],
               ]}
             />
           </Section>
 
-          <Section id="operations" title="Health & operations" lead="Two public endpoints for running the testnet.">
+          <Section id="operations" title="Health & operations" lead="Two endpoints for running the testnet.">
             <H3>GET /api/health</H3>
             <p>
               Checks the configuration, the database and its migrations, the Arc RPC, the deployed contracts, the Circle API key,
@@ -779,7 +771,9 @@ pnpm dev                     # http://localhost:3000`}</CodeBlock>
             <H3>GET /api/testnet</H3>
             <p>
               The data behind the tracker: totals, stage counts, every tester&apos;s progress and the latest 100 transactions. Rebuilt
-              at most every 30 seconds.
+              at most every 30 seconds. It needs the team access code (<Code>TESTNET_ACCESS_CODE</Code>, sent as the{" "}
+              <Code>x-access-code</Code> header) or a sign-in whose email is in <Code>TESTNET_TEAM_EMAILS</Code>. Without either
+              it answers <Code>401</Code>; a wrong code answers <Code>403</Code>.
             </p>
             <H3>Daily checklist during the testnet</H3>
             <Bullets
@@ -822,9 +816,9 @@ pnpm dev                     # http://localhost:3000`}</CodeBlock>
             <Faq q="Someone in my goal stopped responding.">
               Start an exit. After 30 days the goal can be dissolved and everyone claims back what they put in.
             </Faq>
-            <Faq q="Why is my progress not on the tracker yet?">
-              The tracker refreshes every 30 seconds. If a stage is still not ticked after a few minutes, check the transaction
-              completed in History, then report it.
+            <Faq q="How do I check my progress?">
+              Open <strong>Settings → Testnet</strong> to see which stages you have ticked. It updates within a minute of each
+              transaction. If you think something was missed, ask in the Telegram group with your @username.
             </Faq>
             <Faq q="Do I need ETH or another token for gas?">No. On Arc the fee is paid in USDC, about a cent.</Faq>
             <Faq q="Is testnet USDC worth anything?">No. It is free and only exists for testing.</Faq>

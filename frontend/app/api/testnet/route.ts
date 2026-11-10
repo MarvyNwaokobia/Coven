@@ -1,33 +1,28 @@
 import { NextResponse } from "next/server";
 import { TRACKER_ENABLED } from "@/lib/testnet";
-import { buildTracker, loadTrackerInput, type TrackerData } from "@/lib/server/testnet-tracker";
+import { cachedTracker } from "@/lib/server/testnet-tracker";
+import { teamAccess } from "@/lib/server/team";
 
 /**
- * GET /api/testnet - public testnet tracker: totals, each tester's progress through the eligibility
- * stages, and the latest transactions. Shows usernames and wallet addresses (both already public on
- * profiles and on-chain), never emails or phone numbers.
- *
- * Rebuilt at most every 30 seconds per server instance, so a busy tracker page does not re-read
- * every table on each refresh.
+ * GET /api/testnet - the testnet tracker data: totals, each tester's progress through the eligibility
+ * stages, and the latest transactions. Testnet only (404 on mainnet), and core team only: the request
+ * needs the access code (TESTNET_ACCESS_CODE) or a team sign-in (TESTNET_TEAM_EMAILS). No credentials
+ * gets 401, a wrong code gets 403. Never includes emails or phone numbers. A tester's own progress
+ * comes from /api/testnet/me instead.
  */
-const TTL_MS = 30_000;
-let cached: { at: number; data: TrackerData } | null = null;
-let building: Promise<TrackerData> | null = null;
+const PRIVATE = { "cache-control": "private, no-store" };
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!TRACKER_ENABLED) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const access = await teamAccess(req);
+  if (access === "locked") return NextResponse.json({ error: "Enter the access code to view the tracker" }, { status: 401, headers: PRIVATE });
+  if (access === "forbidden") return NextResponse.json({ error: "That access code is not right" }, { status: 403, headers: PRIVATE });
+
   try {
-    if (!cached || Date.now() - cached.at > TTL_MS) {
-      building ??= loadTrackerInput()
-        .then((input) => buildTracker(input))
-        .finally(() => {
-          building = null;
-        });
-      cached = { at: Date.now(), data: await building };
-    }
-    return NextResponse.json(cached.data, { headers: { "cache-control": "public, max-age=15" } });
+    return NextResponse.json(await cachedTracker(), { headers: PRIVATE });
   } catch (e) {
     console.error("testnet tracker failed", e);
-    return NextResponse.json({ error: "Tracker is unavailable right now" }, { status: 503 });
+    return NextResponse.json({ error: "Tracker is unavailable right now" }, { status: 503, headers: PRIVATE });
   }
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { Button, Card, Skeleton } from "@/components/ui";
@@ -9,7 +8,7 @@ import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/useAuth";
 import { NETWORK, NETWORK_LABEL } from "@/lib/network";
 import { FAUCET_URL, STAGES } from "@/lib/testnet";
-import type { Participant, TrackerData } from "@/lib/server/testnet-tracker";
+import type { Participant } from "@/lib/server/testnet-tracker";
 
 export default function NetworkSettingsPage() {
   const { user } = useAuth();
@@ -23,8 +22,8 @@ export default function NetworkSettingsPage() {
     api<{ walletAddress: string | null }>("/api/circle/status")
       .then(({ walletAddress }) => setWallet(walletAddress))
       .catch(() => setWallet(null));
-    api<TrackerData>("/api/testnet")
-      .then((t) => setProgress(t.participants.find((p) => p.username === user.username) ?? null))
+    api<{ progress: Participant | null }>("/api/testnet/me")
+      .then(({ progress }) => setProgress(progress))
       .catch(() => setProgress(null));
   }, [user]);
 
@@ -108,12 +107,7 @@ export default function NetworkSettingsPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs text-ink-mute">
-                  Updates about every 30 seconds.{" "}
-                  <Link href="/testnet" className="font-semibold text-accent hover:underline">
-                    See the full tracker
-                  </Link>
-                </p>
+                <p className="text-xs text-ink-mute">Updates about every 30 seconds.</p>
               </>
             )}
           </Card>

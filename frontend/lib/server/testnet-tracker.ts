@@ -152,7 +152,14 @@ export function buildTracker(input: TrackerInput, recentLimit = 100): TrackerDat
   const circlesBy = new Map<string, number>();
   for (const c of input.circles) circlesBy.set(c.creator_id, (circlesBy.get(c.creator_id) ?? 0) + 1);
   const referralsBy = new Map<string, number>();
-  for (const u of input.users) if (u.referred_by) referralsBy.set(u.referred_by, (referralsBy.get(u.referred_by) ?? 0) + 1);
+  // Invitees who went on to set up a wallet. Only these complete the invite stage, so a sign-up
+  // that never got past the username screen does not count.
+  const activeReferralsBy = new Map<string, number>();
+  for (const u of input.users) {
+    if (!u.referred_by) continue;
+    referralsBy.set(u.referred_by, (referralsBy.get(u.referred_by) ?? 0) + 1);
+    if (u.wallet_address) activeReferralsBy.set(u.referred_by, (activeReferralsBy.get(u.referred_by) ?? 0) + 1);
+  }
 
   const byUser = new Map<string, TrackerEvent[]>();
   for (const e of events) {
@@ -178,6 +185,7 @@ export function buildTracker(input: TrackerInput, recentLimit = 100): TrackerDat
       send: counts.send + counts.group_send > 0,
       split: counts.split_create + counts.split_pay > 0,
       goal: counts.goal_contribute > 0,
+      invite: (activeReferralsBy.get(u.id) ?? 0) > 0,
     };
     return {
       username: u.username,
@@ -269,4 +277,24 @@ export async function loadTrackerInput(): Promise<TrackerInput> {
     allRows<TrackerInput["goal_contributions"][number]>("goal_contributions", "id, goal_id, user_id, amount_usdc, tx_hash, created_at", ["created_at", "id"]),
   ]);
   return { users, circles, payments, splits, split_members, circle_goals, goal_contributions };
+}
+
+/**
+ * The tracker data, rebuilt at most every 30 seconds per server instance so a busy tracker page and
+ * every tester's Settings screen do not re-read every table on each request.
+ */
+const TTL_MS = 30_000;
+let cached: { at: number; data: TrackerData } | null = null;
+let building: Promise<TrackerData> | null = null;
+
+export async function cachedTracker(): Promise<TrackerData> {
+  if (!cached || Date.now() - cached.at > TTL_MS) {
+    building ??= loadTrackerInput()
+      .then((input) => buildTracker(input))
+      .finally(() => {
+        building = null;
+      });
+    cached = { at: Date.now(), data: await building };
+  }
+  return cached.data;
 }

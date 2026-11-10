@@ -11,7 +11,6 @@ Coven is a social USDC payments app on Arc. Testers send money to an @username, 
 | Where | Link |
 | --- | --- |
 | App | https://covenpay.com |
-| Testnet tracker | https://covenpay.com/testnet |
 | X | https://x.com/Covenpay |
 | Telegram group | https://t.me/+GVyHEXlo41M0Mzc0 |
 | Docs | https://covenpay.com/docs |
@@ -53,7 +52,7 @@ On Arc, USDC also pays the network fee (about $0.01 per transaction), so there i
 
 ## 3. Eligibility requirements
 
-A tester is **eligible** once they complete all five required stages. The tracker checks this automatically from recorded on-chain transactions, so there is nothing to submit.
+A tester is **eligible** once they complete all six required stages. The team checks this automatically from recorded on-chain transactions and invite records, so there is nothing to submit.
 
 | Stage | What you do | What counts | Contract | Required |
 | --- | --- | --- | --- | --- |
@@ -63,8 +62,9 @@ A tester is **eligible** once they complete all five required stages. The tracke
 | 4. Send money | Send USDC to an @username, or send to your circle | One completed send | USDC transfer | Yes |
 | 5. Split a bill | Create a bill split in a circle, or pay your share of one | One split created or paid | SplitEscrow | Yes |
 | 6. Contribute to a goal | Put USDC into a circle savings goal | One contribution | GoalPool | Yes |
+| 7. Invite a friend | Share your invite link (Settings) | One friend who signs up through it and sets up a wallet | none (off-chain) | Yes |
 
-**Bonus activity** (shown on the tracker, does not change eligibility): number of transactions, volume moved, goals created, and friends who joined through your invite link.
+**Bonus activity** (recorded, does not change eligibility): number of transactions, volume moved, goals created, and invites beyond the first.
 
 ### Fair-play rules
 
@@ -82,7 +82,7 @@ A tester is **eligible** once they complete all five required stages. The tracke
 
 ## 4. Step-by-step walkthrough
 
-Find a friend (or a few) who are also testing. Circles, splits and goals all need at least two people with Coven accounts.
+Invite a friend (or a few) with your invite link from **Settings**: one who signs up through it and sets up a wallet completes the Invite stage. Circles, splits and goals all need at least two people with Coven accounts.
 
 ### Create a circle
 1. Go to **Circles** → **New circle**.
@@ -112,17 +112,16 @@ Find a friend (or a few) who are also testing. Circles, splits and goals all nee
 ### Optional: try the rest
 - **Request** money from someone, and decline or pay a request sent to you.
 - **QR**: show your QR on Receive and let a friend scan it with **Scan**.
-- **Invite** friends with your invite link (Settings); referrals appear on the tracker.
 
 ---
 
 ## 5. How activity is tracked
 
-The tracker page (`/testnet` on the app) is public and updates every 30 seconds. It shows:
+The tracker page (`/testnet` on the app) is **core team only**: it opens only with the team access code (`TESTNET_ACCESS_CODE`), or for a signed-in email listed in `TESTNET_TEAM_EMAILS`. Testers cannot see it. Share the code with the team privately, never in the public channels. It updates every 30 seconds and shows:
 
 - **Totals**: testers, wallets, eligible testers, transactions, USDC volume.
 - **Stage progress**: how many testers have completed each stage.
-- **Leaderboard**: every tester's username, wallet address, transaction count by type, volume, and a tick for each stage. Searchable by username or address. The team can export it as CSV.
+- **Leaderboard**: every tester's username, wallet address, transaction count by type, volume, and a tick for each stage. Searchable by username or address, and exportable as CSV.
 - **Live feed**: the latest transactions with their type, the contract they went through, the amount, and a link to the explorer.
 
 | Tracker label | What happened | Contract |
@@ -173,8 +172,9 @@ Before announcing, and once a day during the testnet:
 - [ ] Migration `008_referrals.sql` applied to the production Supabase database
 - [ ] Testnet deployment has `NEXT_PUBLIC_NETWORK=testnet`, `CIRCLE_BLOCKCHAIN=ARC-TESTNET`, and a Circle `TEST_API_KEY`
 - [ ] Relayer wallet funded from the faucet (only needed for cross-chain payments)
-- [ ] One team member runs the full walkthrough end to end on the live app: sign up → fund → circle → send → split (create + pay) → goal (create + contribute)
-- [ ] `/testnet` tracker shows that run with every stage ticked
+- [ ] One team member runs the full walkthrough end to end on the live app: sign up → fund → circle → send → split (create + pay) → goal (create + contribute) → invite a second account
+- [ ] `TESTNET_ACCESS_CODE` set in the deployment to a long random code, shared with the team privately
+- [ ] `/testnet` tracker opens with the code and shows that run with every stage ticked
 - [ ] Links in section 1 pinned in Telegram
 - [ ] Someone assigned to watch Telegram for bug reports
 - [ ] Point an uptime monitor at `/api/health` (it answers 503 when anything critical is down)

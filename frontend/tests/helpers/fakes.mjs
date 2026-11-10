@@ -109,7 +109,16 @@ export function installFakes() {
     let m;
 
     // ---- Supabase
-    if (url === `${SUPABASE}/auth/v1/user`) return json({ id: bearer.replace("tok-", ""), aud: "authenticated" });
+    if (url === `${SUPABASE}/auth/v1/user`) {
+      const id = bearer.replace("tok-", "");
+      const row = (db.users ?? []).find((r) => r.id === id);
+      const email = row?.email;
+      return json({
+        id,
+        aud: "authenticated",
+        ...(email ? { email, email_confirmed_at: row.email_unconfirmed ? null : "2026-01-01T00:00:00Z" } : {}),
+      });
+    }
     if ((m = u.pathname.match(/^\/rest\/v1\/rpc\/(\w+)$/))) {
       table("rpc").push({ fn: m[1], args: JSON.parse(init.body) });
       return json(null, 204);

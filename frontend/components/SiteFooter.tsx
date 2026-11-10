@@ -46,12 +46,7 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
       { label: "Cash out to a bank", href: "/#cashout" },
       { label: "Documentation", href: "/docs" },
       { label: "Terms and privacy", href: "/terms" },
-      ...(TRACKER_ENABLED
-        ? [
-            { label: "Testnet whitepaper", href: "/whitepaper", external: true },
-            { label: "Testnet tracker", href: "/testnet" },
-          ]
-        : []),
+      ...(TRACKER_ENABLED ? [{ label: "Testnet whitepaper", href: "/whitepaper", external: true }] : []),
       { label: "Coven on X", href: "https://x.com/Covenpay", external: true },
       { label: "Telegram community", href: "https://t.me/+GVyHEXlo41M0Mzc0", external: true },
     ],

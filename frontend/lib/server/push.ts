@@ -1,4 +1,4 @@
-import webpush from "web-push";
+import { setVapidDetails, sendNotification } from "web-push";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { toNotification, notificationHref } from "@/lib/server/notifications";
 import type { ActivityType } from "@/lib/types";
@@ -29,7 +29,7 @@ function configure(): boolean {
   const priv = process.env.VAPID_PRIVATE_KEY;
   const subject = process.env.VAPID_SUBJECT ?? process.env.NEXT_PUBLIC_APP_URL ?? "mailto:support@coven.app";
   if (!pub || !priv) return (configured = false);
-  webpush.setVapidDetails(subject.startsWith("http") || subject.startsWith("mailto:") ? subject : `mailto:${subject}`, pub, priv);
+  setVapidDetails(subject.startsWith("http") || subject.startsWith("mailto:") ? subject : `mailto:${subject}`, pub, priv);
   return (configured = true);
 }
 
@@ -75,7 +75,7 @@ export async function pushActivity(items: PushableActivity[]): Promise<void> {
           .filter((s) => s.user_id === item.user_id)
           .map(async (s) => {
             try {
-              await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 24 });
+              await sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 24 });
             } catch (err) {
               const status = (err as { statusCode?: number }).statusCode;
               if (status === 404 || status === 410) {

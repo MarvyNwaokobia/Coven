@@ -70,6 +70,7 @@
   --animate-count-in: count-in 0.5s var(--ease-out-soft) both;
   --animate-float: float 7s ease-in-out infinite;
   --animate-drift: drift 14s ease-in-out infinite;
+  --animate-scan: scan 2.6s ease-in-out infinite;
   --animate-sweep: sweep 0.7s var(--ease-out-soft);
 
   /* --- Type --- */
@@ -404,6 +405,20 @@ summary {
   }
   50% {
     transform: translate3d(0, -10px, 0);
+  }
+}
+
+/* Scanner line sweeping down the landing page's QR viewfinder and back. `top`
+   rather than a transform, so the travel follows the viewfinder's size. */
+@keyframes scan {
+  0%,
+  100% {
+    top: 0.75rem;
+    opacity: 0.4;
+  }
+  50% {
+    top: calc(100% - 0.75rem);
+    opacity: 1;
   }
 }
 

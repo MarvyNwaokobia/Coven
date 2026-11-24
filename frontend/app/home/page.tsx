@@ -26,9 +26,10 @@ import {
 import { api } from "@/lib/api-client";
 import { approveTransfer } from "@/lib/circle/pay";
 import { useAuth } from "@/lib/useAuth";
-import { useCurrency, AUTO } from "@/lib/useCurrency";
+import { useCurrency } from "@/lib/useCurrency";
 import { useBalanceHidden } from "@/lib/useBalanceHidden";
-import { DISPLAY_CURRENCIES, getCurrency } from "@/lib/currency";
+import { useBalanceUnit } from "@/lib/useBalanceUnit";
+import { DISPLAY_CURRENCIES } from "@/lib/currency";
 import { NETWORK } from "@/lib/network";
 import { FAUCET_URL } from "@/lib/testnet";
 import { formatUSDC, formatLocal } from "@/lib/format";
@@ -43,7 +44,8 @@ const QUICK_ACTIONS = [
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { currency, ready, preference, setPreference } = useCurrency();
+  const { currency, ready, setPreference } = useCurrency();
+  const [unit, setUnit] = useBalanceUnit();
   const [balance, setBalance] = useState<{ usdc: string } | null>(null);
   const [estimate, setEstimate] = useState<{ code: string; amount: number } | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -97,6 +99,28 @@ export default function HomePage() {
       stale = true;
     };
   }, [user, ready, currency.code, retryKey]);
+
+  // The balance in the chosen unit. A local amount only shows once the estimate for that currency
+  // has arrived, so switching never flashes a number in the previous currency's symbol.
+  const showLocal = unit === "local" && currency.code !== "USD";
+  const localReady = showLocal && estimate?.code === currency.code;
+  const unitCode = showLocal ? currency.code : "USDC";
+  const balanceText = !balance
+    ? null
+    : !showLocal
+      ? formatUSDC(balance.usdc)
+      : localReady && estimate
+        ? formatLocal(estimate.amount, currency.symbol, 2)
+        : null;
+
+  function pickUnit(value: string) {
+    if (value === "USDC") {
+      setUnit("usdc");
+    } else {
+      setPreference(value);
+      setUnit("local");
+    }
+  }
 
   async function payRequest(id: string) {
     setPendingId(id);
@@ -178,15 +202,45 @@ export default function HomePage() {
                   Available balance
                 </p>
 
-                {balance ? (
-                  <p className="amount animate-count-in mt-2.5 text-4xl font-extrabold tracking-tight lg:text-5xl">
-                    {hidden ? "••••••" : formatUSDC(balance.usdc)}
-                    <span className="ml-2 align-middle text-sm font-semibold text-white/50">
-                      USDC
-                    </span>
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                  {balanceText ? (
+                    <p
+                      key={unitCode}
+                      className="amount animate-count-in text-4xl font-extrabold tracking-tight lg:text-5xl"
+                    >
+                      {hidden ? "••••••" : balanceText}
+                    </p>
+                  ) : (
+                    <Skeleton className="h-11 w-44 bg-white/10 lg:h-12" />
+                  )}
+
+                  {/* The unit doubles as the currency switcher. A native select sits invisibly
+                      over the label, so phones get their own picker and keyboards work as usual. */}
+                  <label className="relative inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-white/15 bg-white/10 pl-3 pr-2 text-xs font-bold text-white/85 transition-colors duration-200 hover:bg-white/15 hover:text-white focus-within:ring-2 focus-within:ring-white/60">
+                    <span aria-hidden="true">{unitCode}</span>
+                    <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m4 6 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <select
+                      aria-label="Show balance in"
+                      value={showLocal ? currency.code : "USDC"}
+                      onChange={(e) => pickUnit(e.target.value)}
+                      className="absolute inset-0 cursor-pointer appearance-none opacity-0"
+                    >
+                      <option value="USDC" className="bg-surface text-ink">USDC · US Dollar Coin</option>
+                      {DISPLAY_CURRENCIES.filter((c) => c.code !== "USD").map((c) => (
+                        <option key={c.code} value={c.code} className="bg-surface text-ink">
+                          {c.code} · {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {showLocal && balance && !hidden && (
+                  <p className="tnum mt-2 text-xs font-medium text-white/55">
+                    Estimate from {formatUSDC(balance.usdc)} USDC
                   </p>
-                ) : (
-                  <Skeleton className="mt-3 h-11 w-52 bg-white/10 lg:h-12" />
                 )}
               </div>
 
@@ -200,30 +254,8 @@ export default function HomePage() {
               </button>
             </div>
 
-            <div className="relative mt-5 flex flex-wrap items-center gap-2">
-              {balance && estimate && !hidden && estimate.code !== "USD" && (
-                <span className="tnum inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
-                  ≈ {formatLocal(estimate.amount, getCurrency(estimate.code)?.symbol)} {estimate.code}
-                </span>
-              )}
-              <label className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
-                <span className="sr-only">Display currency</span>
-                <select
-                  value={preference}
-                  onChange={(e) => setPreference(e.target.value)}
-                  className="cursor-pointer bg-transparent text-xs font-semibold text-white focus-visible:outline-none"
-                >
-                  <option value={AUTO} className="text-ink">
-                    Auto ({currency.code})
-                  </option>
-                  {DISPLAY_CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code} className="text-ink">
-                      {c.code} · {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {NETWORK === "testnet" && (
+            {NETWORK === "testnet" && (
+              <div className="relative mt-5 flex flex-wrap items-center gap-2">
                 <a
                   href={FAUCET_URL}
                   target="_blank"
@@ -232,8 +264,8 @@ export default function HomePage() {
                 >
                   Get test USDC <span aria-hidden="true" className="ml-1">↗</span>
                 </a>
-              )}
-            </div>
+              </div>
+            )}
           </section>
 
           {/* Quick actions */}

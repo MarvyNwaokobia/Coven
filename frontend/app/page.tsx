@@ -1,5 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
+import QRCode from "qrcode";
 import Reveal from "@/components/Reveal";
+import { buildPaymentURI } from "@/lib/qr";
 import {
   CovenMark,
   SendIcon,
@@ -206,6 +209,64 @@ export default function Landing() {
         </Reveal>
       </section>
 
+      {/* ------------------------------------------------ Made for people */}
+      <section aria-labelledby="people-heading">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-8 lg:py-24">
+          <Reveal className="relative">
+            <div className="overflow-hidden rounded-3xl border border-line shadow-e3">
+              <Image
+                src="/images/friends-paying.jpg"
+                alt="Two friends in Lagos smiling as they make a payment on their phones"
+                width={1600}
+                height={1200}
+                sizes="(min-width: 1024px) 560px, 100vw"
+                className="aspect-[4/3] h-auto w-full object-cover"
+                priority
+              />
+            </div>
+            <div className="absolute -bottom-5 left-4 flex items-center gap-2.5 rounded-2xl border border-line bg-surface px-4 py-3 shadow-e3 sm:left-6">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-pos-soft text-pos">
+                <ReceiveIcon className="h-4 w-4" />
+              </span>
+              <span>
+                <span className="block text-xs font-bold text-ink">amara paid you</span>
+                <span className="block text-[0.6875rem] text-ink-mute">suya run</span>
+              </span>
+              <span className="amount ml-2 text-sm font-extrabold text-pos">+$25.00</span>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">
+              Made for people
+            </p>
+            <h2
+              id="people-heading"
+              className="mt-3 text-3xl font-extrabold tracking-tight text-balance lg:text-4xl"
+            >
+              Pay your people the way you already talk to them.
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-ink-soft">
+              Rent with your flatmates, suya after a night out, a collection for
+              a friend&apos;s birthday. Coven makes the money part a quick tap
+              between friends, by name, not by bank details.
+            </p>
+            <ul className="mt-6 space-y-3">
+              {[
+                "Send to an @handle, not an account number",
+                "Request money and see the moment it's paid",
+                "Split a bill evenly in two taps",
+              ].map((t) => (
+                <li key={t} className="flex items-start gap-2.5 text-sm font-medium text-ink-soft">
+                  <CheckCircleIcon className="mt-px h-4.5 w-4.5 shrink-0 text-pos" />
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
+        </div>
+      </section>
+
       {/* -------------------------------------------------- How it works */}
       <section id="how" className="scroll-mt-20">
         <div className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
@@ -245,6 +306,46 @@ export default function Landing() {
               );
             })}
           </ol>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------ In person */}
+      <section aria-labelledby="in-person-heading" className="border-t border-line bg-surface">
+        <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-8 lg:py-24">
+          <Reveal className="lg:order-2">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">In person</p>
+            <h2
+              id="in-person-heading"
+              className="mt-3 text-3xl font-extrabold tracking-tight text-balance lg:text-4xl"
+            >
+              Point, scan, paid.
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-ink-soft">
+              Standing next to each other? Show your Coven QR code and let your
+              friend scan it. No typing names, no reading out account numbers.
+            </p>
+            <ol className="mt-6 space-y-4">
+              {[
+                ["Open Receive", "Your personal QR code is ready to show."],
+                ["Your friend scans it", "Their Coven app fills in your @handle."],
+                ["They confirm with their PIN", "The money lands in your balance."],
+              ].map(([title, body], i) => (
+                <li key={title} className="flex gap-3.5">
+                  <span className="tnum flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+                    {i + 1}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold text-ink">{title}</span>
+                    <span className="block text-sm text-ink-soft">{body}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Reveal>
+
+          <Reveal delay={120} className="lg:order-1">
+            <ScanIllustration />
+          </Reveal>
         </div>
       </section>
 
@@ -304,6 +405,16 @@ export default function Landing() {
                 </li>
               ))}
             </ul>
+            <div className="mt-8 overflow-hidden rounded-2xl border border-line shadow-e2">
+              <Image
+                src="/images/man-with-phone.jpg"
+                alt="A hand holding a smartphone above a laptop"
+                width={1400}
+                height={933}
+                sizes="(min-width: 1024px) 560px, 100vw"
+                className="aspect-[2/1] h-auto w-full object-cover"
+              />
+            </div>
           </Reveal>
 
           <Reveal delay={120} className="rounded-2xl border border-line bg-surface p-6 shadow-e2 lg:p-8">
@@ -373,6 +484,110 @@ export default function Landing() {
         </Reveal>
       </section>
 
+    </div>
+  );
+}
+
+/* ------------------------------------------------------ Scan illustration */
+
+/**
+ * A real Coven payment QR code, drawn as one SVG path. It stays dark on white
+ * in both themes, the way a QR code looks on a phone screen.
+ */
+function QrGlyph({ value, className = "" }: { value: string; className?: string }) {
+  const { modules } = QRCode.create(value, { errorCorrectionLevel: "M" });
+  const n = modules.size;
+  let d = "";
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      if (modules.data[y * n + x]) d += `M${x} ${y}h1v1h-1z`;
+    }
+  }
+  return (
+    <svg
+      viewBox={`-2 -2 ${n + 4} ${n + 4}`}
+      shapeRendering="crispEdges"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x={-2} y={-2} width={n + 4} height={n + 4} fill="#ffffff" />
+      <path d={d} fill="#0a192f" />
+    </svg>
+  );
+}
+
+/** One phone showing its Receive QR, a second phone scanning it. Decorative. */
+function ScanIllustration() {
+  const uri = buildPaymentURI({ username: "amara" });
+  return (
+    <div
+      role="img"
+      aria-label="One phone shows a Coven QR code for @amara while a friend's phone scans it to pay $25"
+      className="relative mx-auto h-[24rem] w-full max-w-[25rem] sm:h-[27rem]"
+    >
+      <div
+        aria-hidden="true"
+        className="animate-drift pointer-events-none absolute inset-8 rounded-full bg-accent/15 blur-3xl"
+      />
+
+      {/* Receiver's phone */}
+      <div className="absolute left-0 top-8 w-[11.5rem] -rotate-6 rounded-[2rem] border-[6px] border-brand bg-surface p-3.5 shadow-e4 sm:w-[13rem]">
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-surface-3" />
+        <p className="text-center text-[0.625rem] font-bold uppercase tracking-[0.14em] text-ink-mute">
+          Receive
+        </p>
+        <div className="mt-2.5 flex flex-col items-center">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-extrabold text-accent">
+            A
+          </span>
+          <span className="mt-1.5 text-sm font-bold text-ink">@amara</span>
+        </div>
+        <div className="mt-3 rounded-xl border border-line bg-white p-2">
+          <QrGlyph value={uri} className="h-auto w-full" />
+        </div>
+        <p className="mt-2.5 text-center text-[0.6875rem] font-medium text-ink-soft">
+          Scan to pay me
+        </p>
+      </div>
+
+      {/* Payer's phone, scanning */}
+      <div className="absolute right-0 top-0 z-10 w-[11.5rem] rotate-[5deg] overflow-hidden rounded-[2rem] border-[6px] border-brand bg-[#0b1220] shadow-e4 sm:w-[13rem]">
+        <div className="relative px-4 pb-3 pt-5">
+          <p className="text-center text-[0.625rem] font-bold uppercase tracking-[0.14em] text-white/60">
+            Scan to pay
+          </p>
+          <div className="relative mx-auto mt-3 aspect-square w-full">
+            {/* Viewfinder corners */}
+            {[
+              "left-0 top-0 border-l-[3px] border-t-[3px] rounded-tl-lg",
+              "right-0 top-0 border-r-[3px] border-t-[3px] rounded-tr-lg",
+              "left-0 bottom-0 border-l-[3px] border-b-[3px] rounded-bl-lg",
+              "right-0 bottom-0 border-r-[3px] border-b-[3px] rounded-br-lg",
+            ].map((c) => (
+              <span key={c} className={`absolute h-6 w-6 border-white ${c}`} />
+            ))}
+            <div className="absolute inset-4 -rotate-6 overflow-hidden rounded-md opacity-90">
+              <QrGlyph value={uri} className="h-full w-full" />
+            </div>
+            <span className="animate-scan absolute inset-x-3 top-3 h-0.5 rounded-full bg-accent shadow-[0_0_12px_2px_rgba(79,126,245,0.8)]" />
+          </div>
+        </div>
+        <div className="rounded-t-2xl bg-surface px-4 pb-4 pt-3">
+          <p className="text-[0.6875rem] font-medium text-ink-mute">Pay @amara</p>
+          <p className="amount text-xl font-extrabold tracking-tight text-ink">$25.00</p>
+          <div className="mt-2.5 rounded-full bg-brand py-2 text-center text-[0.6875rem] font-bold text-white">
+            Confirm with PIN
+          </div>
+        </div>
+      </div>
+
+      {/* Result */}
+      <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border border-line bg-surface px-4 py-2.5 shadow-e3">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-pos-soft text-pos">
+          <CheckCircleIcon className="h-3.5 w-3.5" />
+        </span>
+        <span className="text-xs font-bold text-ink">Paid @amara $25.00</span>
+      </div>
     </div>
   );
 }
